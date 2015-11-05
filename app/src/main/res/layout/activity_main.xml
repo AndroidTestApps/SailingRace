@@ -1,0 +1,75 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:background="@drawable/lake"
+    android:orientation="vertical" >
+
+    <!--
+    <EditText
+        android:textStyle="display3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/edit_message" />
+    -->
+
+    <TextView
+        style="@style/TextAppearance.AppCompat.Display3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/welcome_message"
+        android:textColor="#FF0000"
+        android:layout_marginTop="40dp"
+        android:layout_marginBottom="60dp"
+        android:layout_gravity="center_horizontal"
+        android:gravity="center" />
+
+    <TableLayout
+        android:id="@+id/linearLayout1"
+        android:layout_width="fill_parent"
+        android:layout_height="0dp"
+        android:layout_marginBottom="20dp"
+        android:layout_weight="1"
+        android:layout_gravity="center_vertical" >
+        <TableRow
+            android:layout_width="fill_parent"
+            android:layout_height="0dp"
+            android:layout_weight="0.5"
+            android:gravity="center_horizontal" >
+
+            <Button android:id="@+id/button_timer"
+                style="@style/TextAppearance.AppCompat.Display1"
+                android:layout_width="200dp"
+                android:layout_height="wrap_content"
+                android:text="@string/button_timer"
+                 android:onClick="start_timerActivity" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="fill_parent"
+            android:layout_height="0dp"
+            android:layout_weight="0.5"
+            android:gravity="center_horizontal" >
+
+            <Button android:id="@+id/button_racing"
+                style="@style/TextAppearance.AppCompat.Display1"
+                android:layout_width="200dp"
+                android:layout_height="wrap_content"
+                android:text="@string/button_racing"
+                android:onClick="start_raceActivity" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="fill_parent"
+            android:layout_height="0dp"
+            android:layout_weight="0.5"
+            android:gravity="center_horizontal" >
+
+            <Button android:id="@+id/button_settings"
+                style="@style/TextAppearance.AppCompat.Display1"
+                android:layout_width="200dp"
+                android:layout_height="wrap_content"
+                android:text="@string/button_settings"
+                android:onClick="start_settingsActivity" />
+        </TableRow>
+    </TableLayout>
+</LinearLayout>

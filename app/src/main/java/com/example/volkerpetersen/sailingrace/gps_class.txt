@@ -1,0 +1,220 @@
+    /*--------------------------------------------------------------------------------------
+    /* GPS & Network location service
+    /*--------------------------------------------------------------------------------------*/
+    public class GPSTracker extends Service implements LocationListener {
+        private final Context context;
+        boolean isGPSEnabled = false;
+        boolean isNetworkEnabled = false;
+        boolean canGetLocation = false;
+        private Location location;
+        private Location currentBestLocation;
+        private LocationManager locationManager;
+        private long updateTime;
+        private int GPSfired = 0;
+
+        public GPSTracker(Context context, int gpsUpdates, float minDistance) {
+            this.context = context;
+            this.updateTime = (long)(gpsUpdates * 1000);
+            location = getLocation(minDistance);
+        }
+
+        public Location getLocation(float minDistance) {
+            Location loc = null;
+            try {
+                locationManager = (LocationManager) context.getSystemService(LOCATION_SERVICE);
+                isGPSEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+                isNetworkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+
+                if(!isGPSEnabled && !isNetworkEnabled) {
+                    // TODO generate error msg
+                } else {
+                    if (isNetworkEnabled) {
+                        //locationManager.requestLocationUpdates(
+                        //        LocationManager.NETWORK_PROVIDER, this.updateTime, minDistance, this);
+
+                        if (locationManager != null) {
+                            loc = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+
+                            if (loc != null) {
+                                this.canGetLocation = true;
+                                latitude = loc.getLatitude();
+                                longitude = loc.getLongitude();
+                            }
+                        }
+                    }
+
+                    if(isGPSEnabled) {
+                        if(loc == null) {
+                            //locationManager.requestLocationUpdates(
+                            //        LocationManager.GPS_PROVIDER, this.updateTime, minDistance, this);
+
+                            if(locationManager != null) {
+                                loc = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+
+                                if(loc != null) {
+                                    this.canGetLocation = true;
+                                    latitude = loc.getLatitude();
+                                    longitude = loc.getLongitude();
+                                }
+                            }
+                        }
+                    }
+                }
+                if (loc != null) {
+                    currentBestLocation = loc;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return loc;
+        }
+
+        public void stopUsingGPS() {
+            if(locationManager != null) {
+                locationManager.removeUpdates(GPSTracker.this);
+            }
+        }
+
+        public double getLatitude() {
+            if(location != null) latitude = location.getLatitude();
+            return latitude;
+        }
+
+        public double getLongitude() {
+            if(location != null) longitude = location.getLongitude();
+            return longitude;
+        }
+
+        public double getSpeed() {
+            if(location != null) speedGPS = location.getSpeed();
+            return speedGPS;
+        }
+
+        public double getBearing() {
+            if(location != null) headingGPS = location.getBearing();
+            return headingGPS;
+        }
+
+        public void getLastKnownLocation() {
+            if (locationManager != null) {
+                location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            }
+        }
+        
+        public boolean canGetLocation() {
+            return this.canGetLocation;
+        }
+
+        public void showSettingsAlert() {
+            AlertDialog.Builder alertDialog = new AlertDialog.Builder(context);
+
+            alertDialog.setTitle("GPS warning");
+            alertDialog.setMessage("GPS is not enabled. Do you want to go to the settings menu and enable GPS?");
+
+            alertDialog.setPositiveButton("Settings", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                    context.startActivity(intent);
+                }
+            });
+
+            alertDialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.cancel();
+                }
+            });
+            alertDialog.show();
+        }
+
+        @Override
+        public void onLocationChanged(Location locUpdate) {
+            /*
+            if (isBetterLocation(locUpdate, this.currentBestLocation, this.updateTime*3)) {
+                this.location = locUpdate;
+                this.currentBestLocation = locUpdate;
+            } else {
+                this.location = this.currentBestLocation;
+            }
+            */
+            GPSfired += 1;
+            this.location = locUpdate;
+            outputGPSfired.setText("GPS fired: " + GPSfired + " times");
+        }
+
+        @Override
+        public void onProviderDisabled(String arg0) {
+            // TODO Auto-generated method stub
+        }
+
+        @Override
+        public void onProviderEnabled(String arg0) {
+            // TODO Auto-generated method stub
+        }
+
+        @Override
+        public void onStatusChanged(String arg0, int arg1, Bundle arg2) {
+            // TODO Auto-generated method stub
+        }
+
+        @Override
+        public IBinder onBind(Intent intent) {
+            // TODO Auto-generated method stub
+            return null;
+        }
+    }
+    /** Determines whether one Location reading is better than the current Location fix
+     * @param location  The new Location that you want to evaluate
+     * @param currentBestLocation  The current Location fix, to which you want to compare the new one
+     * @param timeBetween  The time (milliseconds) between readings requested in the location position updates
+     */
+    protected boolean isBetterLocation(Location location, Location currentBestLocation, long timeBetween) {
+        if (currentBestLocation == null) {
+            // A new location is always better than no location
+            return true;
+        }
+
+        // Check whether the new location fix is newer or older
+        long timeDelta = location.getTime() - currentBestLocation.getTime();
+        boolean isSignificantlyNewer = timeDelta > timeBetween;
+        boolean isSignificantlyOlder = timeDelta < -timeBetween;
+        boolean isNewer = timeDelta > 0;
+
+        // If it's been more than two minutes since the current location, use the new location
+        // because the user has likely moved
+        if (isSignificantlyNewer) {
+            return true;
+            // If the new location is more than two minutes older, it must be worse
+        } else if (isSignificantlyOlder) {
+            return false;
+        }
+
+        // Check whether the new location fix is more or less accurate
+        int accuracyDelta = (int) (location.getAccuracy() - currentBestLocation.getAccuracy());
+        boolean isLessAccurate = accuracyDelta > 0;
+        boolean isMoreAccurate = accuracyDelta < 0;
+        boolean isSignificantlyLessAccurate = accuracyDelta > 200;
+
+        // Check if the old and new location are from the same provider
+        boolean isFromSameProvider = isSameProvider(location.getProvider(),
+                currentBestLocation.getProvider());
+
+        // Determine location quality using a combination of timeliness and accuracy
+        if (isMoreAccurate) {
+            return true;
+        } else if (isNewer && !isLessAccurate) {
+            return true;
+        } else if (isNewer && !isSignificantlyLessAccurate && isFromSameProvider) {
+            return true;
+        }
+        return false;
+    }
+
+    /** Checks whether two providers are the same */
+    private boolean isSameProvider(String provider1, String provider2) {
+        if (provider1 == null) {
+            return provider2 == null;
+        }
+        return provider1.equals(provider2);
+    }
