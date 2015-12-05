@@ -28,7 +28,7 @@
             android:layout_gravity="center_horizontal"
             android:onClick="decreaseMeanHeading" />
         <TextView
-            style="@style/TextAppearance.AppCompat.Display3"
+            style="@style/TextAppearance.AppCompat.Display2"
             android:id="@+id/MeanHeadingTarget"
             android:text="100"
             android:layout_marginStart="10dp"
@@ -65,12 +65,13 @@
         <TextView
             style="@style/TextAppearance.AppCompat.Headline"
             android:id="@+id/WindwardMark"
-            android:text="@string/WindwardMark"
+            android:text="WWD Mark"
             android:textColor="@color/GREEN"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="match_parent"
-            android:gravity="center_vertical" />
+            android:gravity="center_vertical"
+            />
         <Button android:id="@+id/buttonSetWindwardMark"
             style="@style/TextAppearance.AppCompat.Headline"
             android:layout_width="80dp"
@@ -79,7 +80,7 @@
             android:text="Set"
             android:textColor="@color/RED"
             android:layout_gravity="center_vertical|center_horizontal"
-            android:onClick="setWindwardMark" />
+            />
         <Button android:id="@+id/buttonGoWindwardMark"
             style="@style/TextAppearance.AppCompat.Headline"
             android:layout_width="80dp"
@@ -87,7 +88,7 @@
             android:text="GO"
             android:textColor="@color/WHITE"
             android:layout_gravity="center_vertical|center_horizontal"
-            android:onClick="goWindwardMark" />
+            />
     </LinearLayout>
     <LinearLayout
         android:id="@+id/linearLayout5"
@@ -100,7 +101,7 @@
         <TextView
             style="@style/TextAppearance.AppCompat.Headline"
             android:id="@+id/LeewardMark"
-            android:text="@string/LeewardMark"
+            android:text="Leeward Mark"
             android:textColor="@color/GREEN"
             android:layout_width="0dp"
             android:layout_weight="1"
@@ -114,7 +115,7 @@
             android:text="Set"
             android:textColor="@color/RED"
             android:layout_gravity="center_vertical|center_horizontal"
-            android:onClick="setLeewardMark" />
+            />
         <Button android:id="@+id/buttonGoLeewardMark"
             style="@style/TextAppearance.AppCompat.Headline"
             android:layout_width="80dp"
@@ -122,7 +123,7 @@
             android:text="GO"
             android:textColor="@color/WHITE"
             android:layout_gravity="center_vertical|center_horizontal"
-            android:onClick="goLeewardMark" />
+            />
     </LinearLayout>
 
     <LinearLayout
@@ -142,7 +143,7 @@
             android:gravity="start" />
         <TextView
             style="@style/TextAppearance.AppCompat.Display1"
-            android:id="@+id/markDistance"
+            android:id="@+id/DTM"
             android:text="@string/blank_entry"
             android:layout_width="80dp"
             android:layout_height="wrap_content"
@@ -159,7 +160,7 @@
             android:gravity="end" />
         <TextView
             style="@style/TextAppearance.AppCompat.Display1"
-            android:id="@+id/markBearing"
+            android:id="@+id/BTM"
             android:text="@string/blank_entry"
             android:layout_width="80dp"
             android:layout_height="fill_parent"

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory
+        android:title="Sailing Race App Settings" >
+        <SwitchPreference
+            android:title="Wind Anemometer"
+            android:defaultValue="false"
+            android:summary="Enable the Bluetooth Windex"
+            android:key="key_Windex" >
+        </SwitchPreference>
+        <ListPreference
+            android:title="Race Class"
+            android:key="key_RaceClass"
+            android:defaultValue="4"
+            android:summary="%s"
+            android:entries="@array/listClassArray"
+            android:entryValues="@array/listClassValues" >
+        </ListPreference>
+        <CheckBoxPreference
+            android:title="Warning Period"
+            android:defaultValue="true"
+            android:summary="Begin Start Sequence with Warning period."
+            android:key="key_Warning" >
+        </CheckBoxPreference>
+        <EditTextPreference
+            android:title="Start Sequence Time"
+            android:key="key_StartSequence"
+            android:inputType="number"
+            android:summary="Next Class Start every INT minutes" >
+        </EditTextPreference>
+        <EditTextPreference
+            android:title="Tack Angle"
+            android:key="key_TackAngle"
+            android:inputType="number"
+            android:summary="Target Tack Angle INT°">
+        </EditTextPreference>
+        <EditTextPreference
+            android:title="Gybe Angle"
+            android:key="key_GybeAngle"
+            android:inputType="number"
+            android:summary="Target Gybe Angle INT°">
+        </EditTextPreference>
+        <EditTextPreference
+            android:title="Screen Updates"
+            android:key="key_ScreenUpdates"
+            android:inputType="number"
+            android:summary="Screen Updates every INT seconds">
+        </EditTextPreference>
+        <EditTextPreference
+            android:title="GPS Location Updates"
+            android:key="key_GPSUpdateTime"
+            android:inputType="number"
+            android:summary="New location every INT milli-seconds">
+        </EditTextPreference>
+        <EditTextPreference
+            android:title="GPS Minimum Distance"
+            android:key="key_GPSUpdateDistance"
+            android:inputType="number"
+            android:summary="New location every INT meters">
+        </EditTextPreference>
+        <EditTextPreference
+            android:title="History"
+            android:key="key_history"
+            android:inputType="number"
+            android:summary="Keep 30 old positions">
+        </EditTextPreference>
+    </PreferenceCategory>
+</PreferenceScreen>

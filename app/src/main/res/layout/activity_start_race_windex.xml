@@ -1,0 +1,370 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:weightSum="1">
+
+    <LinearLayout
+        android:id="@+id/linearLayout4"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:layout_marginStart="5dp"
+        android:layout_marginEnd="5dp"
+        android:gravity="center_vertical|center_horizontal" >
+        <TextView
+            style="@style/TextAppearance.AppCompat"
+            android:id="@+id/WindwardMark"
+            android:text= "WWD Mark: Not Set"
+            android:textColor="@color/WHITE"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical|start"
+            />
+        <TextView
+            style="@style/TextAppearance.AppCompat"
+            android:id="@+id/LeewardMark"
+            android:text="LWD Mark: Not Set"
+            android:textColor="@color/WHITE"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical|end" />
+    </LinearLayout>
+    <View android:id="@+id/separator"
+        android:background="@color/GRAY"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="1dp"
+        android:layout_width = "fill_parent"
+        android:layout_height="2dip"
+        android:layout_centerVertical ="true"
+        android:layout_alignParentTop="true"
+        >
+    </View>
+
+    <LinearLayout
+        android:id="@+id/linearLayout7"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:layout_marginStart="5dp"
+        android:layout_marginEnd="5dp"
+        android:layout_gravity="start" >
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/DTMtext"
+            android:textColor="@color/WHITE"
+            android:text="DTM:"
+            android:layout_width="wrap_content"
+            android:layout_height="fill_parent"
+            android:gravity="start" />
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/DTM"
+            android:textColor="@color/WHITE"
+            android:text="@string/blank_entry"
+            android:layout_width="80dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="10dp"
+            android:layout_gravity="end"
+            android:gravity="end" />
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/BTMtext"
+            android:textColor="@color/WHITE"
+            android:text="BTM:"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="fill_parent"
+            android:gravity="end" />
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/BTM"
+            android:textColor="@color/WHITE"
+            android:text="@string/blank_entry"
+            android:layout_width="80dp"
+            android:layout_height="fill_parent"
+            android:gravity="end" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/linearLayout10"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:layout_marginStart="5dp"
+        android:layout_marginEnd="5dp"
+        android:layout_gravity="start" >
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/TWDtext"
+            android:textColor="@color/WHITE"
+            android:text="TWD:"
+            android:layout_width="wrap_content"
+            android:layout_height="fill_parent"
+            android:gravity="start" />
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/TWD"
+            android:textColor="@color/WHITE"
+            android:text="@string/blank_entry"
+            android:layout_width="80dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="10dp"
+            android:gravity="end" />
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/TWAtext"
+            android:textColor="@color/WHITE"
+            android:text="TWA:"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="fill_parent"
+            android:gravity="end" />
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/TWA"
+            android:textColor="@color/WHITE"
+            android:text="@string/blank_entry"
+            android:layout_width="80dp"
+            android:layout_height="fill_parent"
+            android:gravity="end" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/linearLayout9"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:layout_marginStart="5dp"
+        android:layout_marginEnd="5dp"
+        android:layout_gravity="start" >
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/TWStext"
+            android:textColor="@color/WHITE"
+            android:text="TWS:"
+            android:layout_width="wrap_content"
+            android:layout_height="fill_parent"
+            android:gravity="start" />
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/TWS"
+            android:textColor="@color/WHITE"
+            android:text="@string/blank_entry"
+            android:layout_width="80dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="10dp"
+            android:layout_gravity="end"
+            android:gravity="end" />
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:textColor="@color/WHITE"
+            android:text="AWA:"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="fill_parent"
+            android:gravity="end" />
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/AWA"
+            android:textColor="@color/WHITE"
+            android:text="@string/blank_entry"
+            android:layout_width="80dp"
+            android:layout_height="fill_parent"
+            android:gravity="end" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/linearLayout8"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:layout_marginStart="5dp"
+        android:layout_marginEnd="5dp"
+        android:layout_gravity="start" >
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/TextSOG"
+            android:textColor="@color/WHITE"
+            android:text="SOG:"
+            android:layout_width="80dp"
+            android:layout_height="fill_parent"
+            android:gravity="start" />
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/SOG"
+            android:textColor="@color/WHITE"
+            android:text="@string/blank_entry"
+            android:layout_width="80dp"
+            android:layout_height="fill_parent"
+            android:gravity="end" />
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/TextCOG"
+            android:textColor="@color/WHITE"
+            android:text="COG:"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="fill_parent"
+            android:gravity="end" />
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/COG"
+            android:textColor="@color/WHITE"
+            android:text="180°"
+            android:layout_width="80dp"
+            android:layout_height="wrap_content"
+            android:gravity="end" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/linearLayout9"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:layout_marginStart="5dp"
+        android:layout_marginEnd="5dp"
+        android:layout_gravity="start" >
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:textColor="@color/WHITE"
+            android:text="VMG:"
+            android:layout_width="wrap_content"
+            android:layout_height="fill_parent"
+            android:gravity="start" />
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/VMG"
+            android:textColor="@color/WHITE"
+            android:text="@string/blank_entry"
+            android:layout_width="80dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="10dp"
+            android:layout_gravity="end"
+            android:gravity="end" />
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:textColor="@color/WHITE"
+            android:text="PT:"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="fill_parent"
+            android:gravity="end" />
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/PrefTack"
+            android:textColor="@color/WHITE"
+            android:text="@string/blank_entry"
+            android:layout_width="80dp"
+            android:layout_height="fill_parent"
+            android:gravity="end" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/linearLayout6"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:layout_marginStart="5dp"
+        android:layout_marginEnd="5dp"
+        android:layout_gravity="start" >
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/HeaderLift"
+            android:textColor="@color/WHITE"
+            android:text="Header"
+            android:layout_width="125dp"
+            android:layout_height="fill_parent"
+            android:gravity="start" />
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/avgVariance"
+            android:textColor="@color/WHITE"
+            android:text="56°"
+            android:layout_marginEnd="10dp"
+            android:layout_width="80dp"
+            android:gravity="end"
+            android:layout_height="fill_parent" />
+        <TextView
+            style="@style/TextAppearance.AppCompat.Display1"
+            android:id="@+id/varDuration"
+            android:textColor="@color/WHITE"
+            android:text="03:55"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="fill_parent"
+            android:gravity="end" />
+    </LinearLayout>
+    <View android:id="@+id/separator"
+        android:background="@color/GRAY"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="1dp"
+        android:layout_width = "fill_parent"
+        android:layout_height="2dip"
+        android:layout_centerVertical ="true"
+        android:layout_alignParentTop="true"
+        >
+    </View>
+
+    <LinearLayout
+        android:id="@+id/linearLayout2"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="10dp"
+        android:layout_marginStart="0dp"
+        android:layout_gravity="center_horizontal" >
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/leftBar"
+            android:src="@drawable/left20"
+            android:layout_gravity="center_horizontal|bottom" />
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/boat"
+            android:src="@drawable/boatgreen"
+            android:layout_gravity="center_horizontal|bottom" />
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/rightBar"
+            android:src="@drawable/right20"
+            android:layout_gravity="center_horizontal|bottom" />
+    </LinearLayout>
+    <LinearLayout
+        android:id="@+id/linearLayout3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:layout_marginStart="5dp"
+        android:layout_marginEnd="5dp"
+        android:layout_gravity="center_horizontal" >
+        <TextView
+            style="@style/TextAppearance.AppCompat.Body2"
+            android:id="@+id/Status"
+            android:text="GPS "
+            android:layout_width="wrap_content"
+            android:layout_height="fill_parent"
+            android:layout_gravity="center" />
+        <TextView
+            style="@style/TextAppearance.AppCompat.Body2"
+            android:id="@+id/Latitude"
+            android:text="Lat:"
+            android:layout_marginLeft="10dp"
+            android:layout_width="wrap_content"
+            android:layout_height="fill_parent"
+            android:layout_gravity="center"/>
+        <TextView
+            style="@style/TextAppearance.AppCompat.Body2"
+            android:id="@+id/Longitude"
+            android:text="Lon:"
+            android:layout_marginLeft="10dp"
+            android:layout_width="wrap_content"
+            android:layout_height="fill_parent"
+            android:layout_gravity="center"/>
+    </LinearLayout>
+
+</LinearLayout>

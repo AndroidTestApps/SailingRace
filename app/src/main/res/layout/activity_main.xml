@@ -4,14 +4,6 @@
     android:background="@drawable/lake"
     android:orientation="vertical" >
 
-    <!--
-    <EditText
-        android:textStyle="display3"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="@string/edit_message" />
-    -->
-
     <TextView
         style="@style/TextAppearance.AppCompat.Display3"
         android:layout_width="wrap_content"
@@ -41,7 +33,7 @@
                 android:layout_width="200dp"
                 android:layout_height="wrap_content"
                 android:text="@string/button_timer"
-                 android:onClick="start_timerActivity" />
+                android:onClick="start_timerActivity" />
         </TableRow>
 
         <TableRow
