@@ -1,16 +1,16 @@
 package com.example.volkerpetersen.sailingrace;
 /**
  * Created by Volker Petersen on November 2015.
+ * Activity to setup the start timer, run the start timer, and to set windward and Leeward positions.
+ *
  */
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.os.CountDownTimer;
-import android.preference.PreferenceManager;
 import android.speech.tts.TextToSpeech;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
@@ -42,35 +42,31 @@ public class start_timerActivity extends Activity {
     private Button startB;
     private ToneGenerator sound;
     private TextToSpeech talk;
-    private Context context;
+    private Context appContext;
     private Button btnLeewardMarkSet;
     private Button btnWindwardMarkSet;
     private GlobalParameters para;
     static final String LOG_TAG = start_timerActivity.class.getSimpleName();
-    static final int GET_MAP_MARKER_POSITION = 1;   // Our request code to pass data back from map FragmentActivity
-    private DecimalFormat df2 = new DecimalFormat("#0.00");
-    private DecimalFormat df1 = new DecimalFormat("#0.0");
     private GPSTracker gps;
     private ColorStateList WHITE;
     private ColorStateList RED;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_start_timer);
         setTitle("RaceApp - Timer");
-        context = getApplicationContext();
+        appContext = getApplicationContext();
 
         // fetch the Shared Preferences from the class FetchPreferenceValues in file SailingRacePreferences
         // Shared Preferences key names are defined in SailingRacePreferences.OnCreate()
         seconds = 0;
-        minutes = SailingRacePreferences.FetchPreferenceValue("key_StartSequence", getBaseContext());
-        warning = SailingRacePreferences.FetchPreferenceValue("key_Warning", getBaseContext());
-        ourClass = SailingRacePreferences.FetchPreferenceValue("key_RaceClass", getBaseContext());
-        int history = SailingRacePreferences.FetchPreferenceValue("key_history", context); // max number of location positions stored in LinkedList.
-        long gpsUpdates = (long) SailingRacePreferences.FetchPreferenceValue("key_GPSUpdateTime", context); // Time Interval for GPS position updates in milliseconds
-        float minDistance = (float) SailingRacePreferences.FetchPreferenceValue("key_GPSUpdateDistance", context); // min distance (m) between GPS updates
+        minutes = SailingRacePreferences.FetchPreferenceValue("key_StartSequence", appContext);
+        warning = SailingRacePreferences.FetchPreferenceValue("key_Warning", appContext);
+        ourClass = SailingRacePreferences.FetchPreferenceValue("key_RaceClass", appContext);
+        int history = SailingRacePreferences.FetchPreferenceValue("key_history", appContext); // max number of location positions stored in LinkedList.
+        long gpsUpdates = (long) SailingRacePreferences.FetchPreferenceValue("key_GPSUpdateTime", appContext); // Time Interval for GPS position updates in milliseconds
+        float minDistance = (float) SailingRacePreferences.FetchPreferenceValue("key_GPSUpdateDistance", appContext); // min distance (m) between GPS updates
 
         halftime = (int)(minutes*60/2.0);
         countdown = (minutes*60 + seconds) * interval;
@@ -78,20 +74,19 @@ public class start_timerActivity extends Activity {
         classSequence = (TextView) findViewById(R.id.classSequence);
         view = this.findViewById(android.R.id.content);
 
-        // initialize our Global Parameter class and the gps location class
-        para = new GlobalParameters();
-        //Log.d(LOG_TAG, "start_timerActivity value of 'TEST': "+para.test);
-        //para.test = "leaving start_timerActivity";
+        // initialize our Global Parameter class by calling the
+        // Application class (see application tag in AndroidManifest.xml)
+        para = (GlobalParameters) appContext;
 
-        gps = new GPSTracker(start_timerActivity.this, para, gpsUpdates, minDistance, history);
+        gps = new GPSTracker(appContext, gpsUpdates, minDistance, history);
         if (gps.canGetLocation()) {
-            para.latitude = gps.getLatitude();
-            para.longitude = gps.getLongitude();
+            para.setBoatLat(gps.getLatitude());
+            para.setBoatLon(gps.getLongitude());
         }
 
         // initialize the color variables (type ColorStateList)
-        WHITE = ContextCompat.getColorStateList(context, R.color.WHITE);
-        RED = ContextCompat.getColorStateList(context, R.color.RED);
+        WHITE = ContextCompat.getColorStateList(appContext, R.color.WHITE);
+        RED = ContextCompat.getColorStateList(appContext, R.color.RED);
 
         // Initialize the set Windward / Leeward Map Position buttons and register btn listeners
         btnLeewardMarkSet = (Button) findViewById(R.id.button_setLeeward);
@@ -101,47 +96,36 @@ public class start_timerActivity extends Activity {
         btnLeewardMarkSet.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // if we have a Click, we want to go Set or Clear the Leeward mark
-                if (para.leewardSet) {
-                    para.leewardSet = false;
-                    para.leewardLAT = Double.NaN;
-                    para.leewardLON = Double.NaN;
-                } else {
-                    para.leewardSet = true;
-                    para.leewardLAT = para.latitude;
-                    para.leewardLON = para.longitude;
-                }
-                updateButtons();
+            // if we have a Click, we want to go Set or Clear the Leeward mark
+            if (para.getLeewardFlag()) {
+                // clear the Leeward Mark
+                para.setLeewardFlag(false);
+                para.setLeewardLat(Double.NaN);
+                para.setLeewardLon(Double.NaN);
+            } else {
+                // set the Windward Mark
+                para.setLeewardFlag(true);
+                para.setLeewardLat(gps.getLatitude());
+                para.setLeewardLon(gps.getLongitude());
+            }
+            updateButtons();
             }
         });
 
         btnWindwardMarkSet.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // if we have a Click, we want to go Set or Clear the Windward mark
-                if (para.windwardSet) {
-                    para.windwardSet = false;
-                    para.windwardLAT = Double.NaN;
-                    para.windwardLON = Double.NaN;
-                } else {
-                    // creating a bundle object to pass data to the Google Maps Fragment (MapsActivity)
-                    Bundle bundle = new Bundle();
-                    bundle.putBoolean("windwardRace", para.windwardRace);
-                    bundle.putBoolean("leewardRace", para.leewardRace);
-                    bundle.putDouble("windwardLat", para.windwardLAT);
-                    bundle.putDouble("windwardLon", para.windwardLON);
-                    bundle.putDouble("leewardLat", para.leewardLAT);
-                    bundle.putDouble("leewardLon", para.leewardLON);
-                    bundle.putDouble("boatLat", para.latitude);
-                    bundle.putDouble("boatLon", para.longitude);
-
-                    Intent intent = new Intent(context, MapsActivity.class);
-                    intent.putExtras(bundle);
-                    // the "startActivityForResults" system method allows the calls upon Fragment to return results.
-                    // the results are processed in the method onActivityResult() below.
-                    startActivityForResult(intent, GET_MAP_MARKER_POSITION);
-                }
-                updateButtons();
+            // if we have a Click, we want to go Set or Clear the Windward mark
+            if (para.getWindwardFlag()) {
+                // clear the Windward Mark
+                para.setWindwardFlag(false);
+                para.setWindwardLat(Double.NaN);
+                para.setWindwardLon(Double.NaN);
+            } else {
+                // start the Google Maps Fragment (MapsActivity) to set the Windward Mark
+                startActivity(new Intent(appContext, MapsActivity.class));
+            }
+            updateButtons();
             }
         });
 
@@ -154,22 +138,22 @@ public class start_timerActivity extends Activity {
         NumberPicker.OnValueChangeListener onValueChangedMinutes=new NumberPicker.OnValueChangeListener() {
             @Override
             public void onValueChange(NumberPicker picker, int oldVal, int newVal) {
-                minutes = newVal;
-                counter_update();
+            minutes = newVal;
+            counter_update();
             }
         };
         NumberPicker.OnValueChangeListener onValueChangedSeconds=new NumberPicker.OnValueChangeListener() {
             @Override
             public void onValueChange(NumberPicker picker, int oldVal, int newVal) {
-                seconds = newVal;
-                counter_update();
+            seconds = newVal;
+            counter_update();
             }
         };
         NumberPicker.OnValueChangeListener onValueChangedClass=new NumberPicker.OnValueChangeListener() {
             @Override
             public void onValueChange(NumberPicker picker, int oldVal, int newVal) {
-                ourClass = newVal;
-                counter_update();
+            ourClass = newVal;
+            counter_update();
             }
         };
 
@@ -202,7 +186,7 @@ public class start_timerActivity extends Activity {
         sound = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
 
         // initialize the Text-to-Speech app
-        talk=new TextToSpeech(context, new TextToSpeech.OnInitListener() {
+        talk=new TextToSpeech(appContext, new TextToSpeech.OnInitListener() {
             @Override
             public void onInit(int status) {
                 if(status != TextToSpeech.ERROR) {
@@ -214,11 +198,22 @@ public class start_timerActivity extends Activity {
 
     @Override
     protected void onResume() {
+        if (para.getWindwardLat() != Double.NaN) {
+            para.setWindwardRace(true);
+        }
         super.onResume();
+        updateButtons();
     }
 
     @Override
     protected void onDestroy() {
+        Log.d(LOG_TAG, "+++++++++++++++++++++++++++++ On Destroy ++++++++++++++++++++++++++++++++");
+        Log.d(LOG_TAG, "Windward Lat  " + appContext.getString(R.string.DF3, para.getWindwardLat()));
+        Log.d(LOG_TAG, "Windward Race " + para.getWindwardRace());
+        Log.d(LOG_TAG, "Windward Flag " + para.getWindwardFlag());
+        Log.d(LOG_TAG, "Leeward Lat   " + appContext.getString(R.string.DF3, para.getLeewardLat()));
+        Log.d(LOG_TAG, "Boat Lat      " + appContext.getString(R.string.DF3, para.getBoatLat()));
+        Log.d(LOG_TAG, "para          " + para);
         gps.stopUsingGPS();
         if (countDownTimer != null) {
             countDownTimer.cancel();
@@ -229,41 +224,16 @@ public class start_timerActivity extends Activity {
         finish(); //quit activity
     }
 
-    // method that retrieves the data which has been returned from the Google Maps FragmentActivity (MapsActivity)
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent intent) {
-        double[] DistanceBearing = new double[2];
-        super.onActivityResult(requestCode, resultCode, intent);
-        // Check which request we're responding to.  Here we're interested in the Google Maps marker position
-        if (requestCode == GET_MAP_MARKER_POSITION) {
-            // Make sure the request was successful
-            if (resultCode == RESULT_OK) {
-                // a Marker position has been set.  Make that our Windward mark.
-                Bundle extras = intent.getExtras();
-                para.windwardSet = true;
-                para.windwardLAT = extras.getDouble("markerLat");
-                para.windwardLON = extras.getDouble("markerLon");
-                updateButtons();
-                DistanceBearing = NavigationTools.MarkDistanceBearing(para.latitude, para.longitude, para.windwardLAT, para.windwardLON);
-                //Log.d(LOG_TAG, "onActivityResult DTM:" + df2.format(DistanceBearing[0]));
-                //Log.d(LOG_TAG, "onActivityResult BTM:" + df1.format(DistanceBearing[1]) + "°");
-            } else {
-                // TODO here any error handling for resultCode != RESULT_OK
-                //Log.d(LOG_TAG, "onActivityResult was closed w/o setting the marker position");
-            }
-        }
-        //Log.d(LOG_TAG, "onActivityResult resultCode = " + resultCode + " requestCode " + requestCode);
-    }
 
     public void updateButtons() {
-        if (para.leewardSet) {
+        if (para.getLeewardFlag()) {
             btnLeewardMarkSet.setText("LWD CLR");
             btnLeewardMarkSet.setTextColor(RED);
         } else {
             btnLeewardMarkSet.setText("LWD SET");
             btnLeewardMarkSet.setTextColor(WHITE);
         }
-        if (para.windwardSet) {
+        if (para.getWindwardFlag()) {
             btnWindwardMarkSet.setText("WWD CLR");
             btnWindwardMarkSet.setTextColor(RED);
         } else {
@@ -280,7 +250,6 @@ public class start_timerActivity extends Activity {
         classSequence.setText(tmp);
     }
 
-
     public class MyCountDownTimer extends CountDownTimer {
         public MyCountDownTimer(long startTime, long interval) {
             super(startTime, interval);
@@ -292,7 +261,7 @@ public class start_timerActivity extends Activity {
             CharSequence charSeq = "Go";
             ct.setText(tmp);
             talk.speak(charSeq, TextToSpeech.QUEUE_FLUSH, null, "go");
-            startActivity(new Intent(context, start_raceActivity.class));
+            startActivity(new Intent(appContext, start_raceActivity.class));
         }
 
         @Override

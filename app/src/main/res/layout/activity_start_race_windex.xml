@@ -246,14 +246,15 @@
         <TextView
             style="@style/TextAppearance.AppCompat.Display1"
             android:textColor="@color/WHITE"
-            android:text="PT:"
+            android:id="@+id/GoalVMGtext"
+            android:text="Goal:"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="fill_parent"
             android:gravity="end" />
         <TextView
             style="@style/TextAppearance.AppCompat.Display1"
-            android:id="@+id/PrefTack"
+            android:id="@+id/GoalVMG"
             android:textColor="@color/WHITE"
             android:text="@string/blank_entry"
             android:layout_width="80dp"

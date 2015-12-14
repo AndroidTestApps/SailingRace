@@ -144,9 +144,13 @@ def plot_course(data, scale):
     ax.set_autoscaley_on(False)
     fig.show()
 
-def shortest_distance_to_mark(TackAngle, DTM, BTM, TWD, plot=True):
+def shortest_distance_to_mark(TackAngle, DTM, BTM, TWD, CourseOffset, plot=True):
     # see Evernote for drawing with all angle definitions    
-    delta      = HeadingDelta(BTM, TWD)
+    if (CourseOffset == 180.0):
+        sign = -1.0
+    else:
+        sign = 1.0
+    delta = HeadingDelta(BTM, TWD)*sign
     if (abs(delta) > TackAngle):
         theta_stbd = 0.0
         theta_port = 0.0
@@ -248,7 +252,7 @@ def shortest_distance_to_mark(TackAngle, DTM, BTM, TWD, plot=True):
 
     return (d1_port, d2_port, d1_stbd, d2_stbd, dist_port, dist_stbd, fav)
     
-def main():
+def main(CourseOffset):
     TackAngle = 40
     tack = "port"
     COG = 40
@@ -256,7 +260,7 @@ def main():
     DTM = 10.0    
     TWD = 42.5
     
-    (d1_port, d2_port, d1_stbd, d2_stbd, sail_port, sail_stbd, fav) = shortest_distance_to_mark(TackAngle, DTM, BTM, TWD, True)
+    (d1_port, d2_port, d1_stbd, d2_stbd, sail_port, sail_stbd, fav) = shortest_distance_to_mark(TackAngle, DTM, BTM, TWD, CourseOffset, True)
     print "\nPort tack first:"  
     print "d1:\t\t %.3f" %d1_port
     print "d2:\t\t %.3f" %d2_port
@@ -278,8 +282,10 @@ def main():
 """
 if __name__ == "__main__":
     print __doc__  
-    test_headingDelta()
-    main()
+    #test_headingDelta()
+    CourseOffset = 0.0  # Upwind Course
+    CourseOffset = 180.0  # Downwind Course
+    main(CourseOffset)
     testDistanceBearing()
     
 

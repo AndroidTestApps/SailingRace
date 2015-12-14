@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:xliff="http://schemas.android.com/tools">
     <string name="app_name">Sailing Race App</string>
     <string name="minutes">Minutes</string>
     <string name="seconds">Seconds</string>
@@ -19,4 +19,25 @@
     <string name="RaceClass">Race Class</string>
     <string name="AlertHeader">Delete the current race mark?</string>
     <string name="QuitRace">Do you want to quit the race?</string>
+    <string name="QuitApp">Do you want to quit Offline\'s\nRacing App?</string>
+
+    <!-- Degree Formats, using Unicode character for degree symbol -->
+    <string name="Degrees"><xliff:g id="degrees">%1.0f</xliff:g>\u00B0</string>
+
+    <!-- DTM | BTM Format -->
+    <string name="BTM_DTM">BTM: <xliff:g id="BTM">%02.0f</xliff:g>\u00B0    |    DTM: <xliff:g id="DTM">%1.1f</xliff:g></string>
+
+    <!-- Minutes:Seconds Format -->
+    <string name="MinSec"><xliff:g id="min">%02.0f</xliff:g>:<xliff:g id="sec">%02.0f</xliff:g></string>
+
+    <!-- various integer number Formats -->
+    <string name="DFthree"><xliff:g id="dfthree">%03d</xliff:g></string>
+    <string name="DFtwo"><xliff:g id="dftwo">%02d</xliff:g></string>
+    <string name="DFone"><xliff:g id="dfone">%01d</xliff:g></string>
+
+    <!-- various double/float number Formats -->
+    <string name="DF0"><xliff:g id="df0">%03.0f</xliff:g></string>
+    <string name="DF1"><xliff:g id="df1">%1.1f</xliff:g></string>
+    <string name="DF2"><xliff:g id="df2">%1.2f</xliff:g></string>
+    <string name="DF3"><xliff:g id="df3">%1.3f</xliff:g></string>
 </resources>

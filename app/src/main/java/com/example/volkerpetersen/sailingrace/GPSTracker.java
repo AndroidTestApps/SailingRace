@@ -19,37 +19,43 @@ import java.util.LinkedList;
 
 /**
  * Created by Volker Petersen November 2015.
+ *-----------------------------------------------------------------------------------------
+ * GPS location, heading, and speed service
+ *-----------------------------------------------------------------------------------------
  */
-//-----------------------------------------------------------------------------------------
-// GPS location, heading, and speed service
-//
-// @param   - Context activity context
-// @param   - long gpsUpdate: minimum time (in milliseconds) between GPS updates
-// @param   - float gpsDistance: minimum distance (in meters) between GPS updates
-// @param   - int keepNumPositions: max GPS location history to compute average speed / heading
-//
-//-----------------------------------------------------------------------------------------
 public class GPSTracker extends Service implements LocationListener {
     private GeomagneticField geoField;
-    private final Context context;
-    private final GlobalParameters para;
+    private Context appContext;
     private boolean isGPSEnabled = false;
     private boolean canGetLocation = false;
     private int GPSfired;
     private int keepNumPositions;
-    private double toKts = 1.94384;  // m/s to knots conversation factor
+    private double toKts = 1.94384;         // m/s to knots conversation factor
+    private GlobalParameters para;          // class object for the global parameters
     private Location location;
     private LocationManager locationManager;
     public LinkedList<Location> LocationList = new LinkedList<Location>();
     private String[] dots;
-    private DecimalFormat dfThree = new DecimalFormat("000");
     static final String LOG_TAG = GPSTracker.class.getSimpleName();
 
-    public GPSTracker(Context context, GlobalParameters para, long gpsUpdates, float gpsDistance, int keepNumPositions) {
-        this.context = context;
-        this.para = para;
+    /**
+     * GPS location, heading, and speed service
+     *
+     * @param appContext - Application Context
+     * @param gpsUpdates - long minimum time (in milliseconds) between GPS updates
+     * @param gpsDistance - double gpsDistance: minimum distance (in meters) between GPS updates
+     * @param keepNumPositions - int keepNumPositions: max GPS location history to compute average speed / heading
+     *
+     */
+    public GPSTracker(Context appContext, long gpsUpdates, double gpsDistance, int keepNumPositions) {
+        this.appContext = appContext;
         this.keepNumPositions = keepNumPositions;
-        location = getLocation(gpsUpdates, gpsDistance);
+
+        // initialize our Global Parameter class by calling the
+        // Application class (see application tag in AndroidManifest.xml)
+        para = (GlobalParameters) appContext;
+
+        location = getLocation(gpsUpdates, (float)gpsDistance);
         GPSfired = 0;
         dots = new String[]{".   ", "..  ", "... ", "...."};
         if (location != null) {
@@ -59,18 +65,22 @@ public class GPSTracker extends Service implements LocationListener {
                     Double.valueOf(location.getAltitude()).floatValue(),
                     System.currentTimeMillis()
             );
-            para.declination = geoField.getDeclination();
+            para.setDeclination(geoField.getDeclination());
         } else {
-            para.declination = 0.0;
+            para.setDeclination(0.0d);
         }
     }
 
+    /**
+     * Fetches the current Location
+     * @param minGPSUpdateTime in milliseconds
+     * @param minGPSDistance in meter
+     * @return Location
+     */
     public Location getLocation(long minGPSUpdateTime, float minGPSDistance) {
-        // @param  minGPSUpdateTime in milliseconds
-        // @param  minGPSDistance in meter
         Location loc = null;
         try {
-            locationManager = (LocationManager) context.getSystemService(LOCATION_SERVICE);
+            locationManager = (LocationManager) appContext.getSystemService(LOCATION_SERVICE);
             isGPSEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
 
             if (isGPSEnabled) {
@@ -89,8 +99,8 @@ public class GPSTracker extends Service implements LocationListener {
 
                     if (loc != null) {
                         this.canGetLocation = true;
-                        para.latitude = this.getLatitude();
-                        para.longitude = this.getLongitude();
+                        para.setBoatLat(this.getLatitude());
+                        para.setBoatLon(this.getLongitude());
                         this.getHeading();
                         this.getSpeed();
                         this.getAvgSpeedHeading();
@@ -108,6 +118,9 @@ public class GPSTracker extends Service implements LocationListener {
         return loc;
     }
 
+    /**
+     * Method to stop the current GPS location thread
+     */
     public void stopUsingGPS() {
         if (locationManager != null) {
             try {
@@ -118,40 +131,63 @@ public class GPSTracker extends Service implements LocationListener {
         }
     }
 
+    /**
+     * Method to return the current Latitude
+     * The result will be stored in the global parameter class para.latitude
+     * @return double latitude
+     */
     public double getLatitude() {
-        if (location != null) para.latitude = location.getLatitude();
-        return para.latitude;
+        if (location != null) para.setBoatLat(location.getLatitude());
+        return para.getBoatLat();
     }
 
+    /**
+     * Method to return the current Longitude
+     * The result will be stored in the global parameter class para.longitude
+     * @return double longitude
+     */
     public double getLongitude() {
-        if (location != null) para.longitude = location.getLongitude();
-        return para.longitude;
+        if (location != null) para.setBoatLon(location.getLongitude());
+        return para.getBoatLon();
     }
 
+    /**
+     * Method to compute the current speed in nm per hour (kts)
+     * The result will be stored in the global parameter class para.SOG
+     */
     public void getSpeed() {
-        if (location != null) para.SOG = location.getSpeed() * toKts;
+        if (location != null) para.setSOG(location.getSpeed() * toKts);
     }
 
+    /**
+     * Method to compute the current heading in True North
+     * The result will be stored in the global parameter class para.COG
+     */
     public void getHeading() {
         if (location != null) {
-            para.COG = location.getBearing() + para.declination;
+            para.setCOG(location.getBearing());
         }
     }
 
+    /**
+     * Method to compute the average speed and heading from the past (Settings History) values in
+     * the FIFO queues for the SOG (kts) and COG (True North).
+     * The results will be stored in the global parameter class para.avgSOG and para.avgCOG.
+     */
     public void getAvgSpeedHeading() {
         if (location != null && LocationList.size()>2 ) {
             Location first = LocationList.getFirst();
             Location last = LocationList.getLast();
 
-            para.avgCOG = NavigationTools.fixAngle(first.bearingTo(last) + para.declination);
+            para.setAvgCOG(NavigationTools.fixAngle(first.bearingTo(last)));
             double distance = first.distanceTo(last);
             double time = (last.getElapsedRealtimeNanos() - first.getElapsedRealtimeNanos()) / 1000000000.0;
             if (time != 0.0) {
-                para.avgSOG = distance / time * toKts;
+                para.setAvgSOG(distance / time * toKts);
             }
         } else {
-            para.avgCOG = para.COG;
-            para.avgSOG = para.SOG;
+            para.setAvgCOG(para.getCOG());
+            para.setAvgSOG(para.getSOG());
         }
     }
 
@@ -170,7 +206,7 @@ public class GPSTracker extends Service implements LocationListener {
     }
 
     public void showSettingsAlert() {
-        AlertDialog.Builder alertDialog = new AlertDialog.Builder(context);
+        AlertDialog.Builder alertDialog = new AlertDialog.Builder(appContext);
 
         alertDialog.setTitle("GPS warning");
         alertDialog.setMessage("GPS is not enabled. Do you want to go to the settings menu and enable GPS?");
@@ -179,7 +215,7 @@ public class GPSTracker extends Service implements LocationListener {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-                context.startActivity(intent);
+                appContext.startActivity(intent);
             }
         });
 
@@ -200,7 +236,7 @@ public class GPSTracker extends Service implements LocationListener {
             LocationList.removeFirst();
         }
         LocationList.add(locUpdate);
-        para.gpsStatus = (provider + dots[GPSfired%4]);
+        para.setGpsStatus(provider + dots[GPSfired%4]);
         GPSfired += 1;
     }
 

@@ -11,19 +11,27 @@ import android.util.Log;
 import java.text.DecimalFormat;
 import java.util.LinkedList;
 
+/**
+ * Class to initialize and manage a FIFO queue for double variables.  Each new instance for
+ * another variable gets initialized with a size (# of elements in the FIFO queue)
+ */
 public class fifoQueueDouble {
     static final String LOG_TAG = fifoQueueDouble.class.getSimpleName();
     private LinkedList<Double> queue = new LinkedList<Double>();
     private int size;
 
-    // class initialization.  Create a new instance of a FIFO queue of size "size"
+    /**
+     * class initialization.  Create a new instance of a FIFO queue of size "size"
+     */
     public fifoQueueDouble(int queue_size) {
         this.size = queue_size;
     }
 
-    // Inserts the specified element into this queue if it is possible to do so
-    // immediately without violating capacity restrictions, otherwise drop first
-    // value in queue off and then add value to the end of this queue.
+    /**
+     * Inserts the specified element into this queue if it is possible to do so
+     * immediately without violating capacity restrictions, otherwise drop first
+     * value in queue off and then add value to the end of this queue.
+     */
     public void add(double value) {
         if (queue.size() >= size) {
             queue.poll();
@@ -31,25 +39,33 @@ public class fifoQueueDouble {
         queue.add(value);
     }
 
-    // Removes a single instance of the specified element from this collection
-    public void remove(double value) {
+    /**
+     * Removes a single instance of the specified element from this collection
+     */
+     public void remove(double value) {
         queue.remove(value);
     }
 
-    // Retrieves and removes the head (first in) of this queue, or returns null if this
-    // queue is empty.
+    /**
+     * Retrieves and removes the head (first in) of this queue, or returns null if this
+     * queue is empty.
+     */
     public double poll() {
         double data = queue.poll();
         return data;
     }
 
-    // Returns true if this collection contains no elements
+    /**
+     * Returns true if this collection contains no elements
+     */
     public boolean isEmpty() {
         return queue.isEmpty();
     }
 
-    // Return an element from queue
-    // returns the value or NaN if the element index is out of range
+    /**
+     * Return an element from queue
+     * returns the value or NaN if the element index is out of range
+     */
     public double getElement(int i) {
         if (i < 0 || i > queue.size()-1) {
             return Double.NaN;
@@ -58,8 +74,10 @@ public class fifoQueueDouble {
         }
     }
 
-    // Returns the first element from queue
-    // returns the value or NaN if the queue is empty
+    /**
+     * Returns the first element from queue
+     * returns the value or NaN if the queue is empty
+     */
     public double getFirst() {
         if (queue.size() == 0) {
             return Double.NaN;
@@ -68,8 +86,10 @@ public class fifoQueueDouble {
         }
     }
 
-    // Returns the first element from queue
-    // returns the value or NaN if the queue is empty
+    /**
+    * Returns the first element from queue
+    * returns the value or NaN if the queue is empty
+    */
     public double getLast() {
         int i = queue.size();
         if (i == 0) {
@@ -79,13 +99,17 @@ public class fifoQueueDouble {
         }
     }
 
-    // Returns the number of elements in this collection. If this collection
-    // contains more than Integer.MAX_VALUE elements, returns Integer.MAX_VALUE
+    /**
+    * Returns the number of elements in this collection. If this collection
+    * contains more than Integer.MAX_VALUE elements, returns Integer.MAX_VALUE
+    */
     public int getTotalSize() {
         return queue.size();
     }
 
-    // compute the average value of the values in the FIFO queue
+    /**
+     * compute the average value of the values in the FIFO queue
+     */
     public double average() {
         double sum = 0.0;
         if (queue.isEmpty()) {
@@ -97,7 +121,9 @@ public class fifoQueueDouble {
         return sum/(double)queue.size();
     }
 
-    // Show all FIFO queue elements in Log.d
+    /**
+     * Show all FIFO queue elements in Log.d
+     */
     public void logQueue() {
         DecimalFormat dfOne = new DecimalFormat("#");
         DecimalFormat df2 = new DecimalFormat("#0.00");

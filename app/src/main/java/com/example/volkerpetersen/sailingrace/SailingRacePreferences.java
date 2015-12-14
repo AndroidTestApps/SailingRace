@@ -1,6 +1,8 @@
 package com.example.volkerpetersen.sailingrace;
 /**
  * Created by Volker Petersen - November 2015.
+ *
+ * Activity to update and display the current Setting preferences
  */
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -9,7 +11,10 @@ import android.preference.EditTextPreference;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
+import android.preference.SwitchPreference;
 import android.util.Log;
+import android.widget.CheckBox;
+import android.widget.Switch;
 
 import java.util.Hashtable;
 
@@ -76,7 +81,7 @@ public class SailingRacePreferences extends PreferenceActivity {
         @Override
         public void onCreate(final Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
-            addPreferencesFromResource(R.xml.preferences);
+            addPreferencesFromResource(com.example.volkerpetersen.sailingrace.R.xml.preferences);
             SharedPreferences SP = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
             getPreferenceScreen().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
             UpdatePreferenceValues(SP);
@@ -88,6 +93,18 @@ public class SailingRacePreferences extends PreferenceActivity {
 
         public void UpdatePreferenceValues(SharedPreferences SP) {
             String[] item;
+            final boolean polarsEnabled = SP.getBoolean("key_Polars", true);
+            final boolean windexEnabled = SP.getBoolean("key_Windex", true);
+
+            getPreferenceScreen().findPreference("key_Polars").setEnabled(windexEnabled);
+            getPreferenceScreen().findPreference("key_TackAngle").setEnabled(!windexEnabled);
+            getPreferenceScreen().findPreference("key_GybeAngle").setEnabled(!windexEnabled);
+
+            if (windexEnabled && !polarsEnabled) {
+                getPreferenceScreen().findPreference("key_TackAngle").setEnabled(true);
+                getPreferenceScreen().findPreference("key_GybeAngle").setEnabled(true);
+            }
+
             for(String key: prefs.keySet()){
                 item = prefs.get(key);
                 if (!item[0].equals("")) {

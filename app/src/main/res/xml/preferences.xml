@@ -28,6 +28,12 @@
             android:inputType="number"
             android:summary="Next Class Start every INT minutes" >
         </EditTextPreference>
+        <CheckBoxPreference
+            android:title="Capri-25 Polars"
+            android:key="key_Polars"
+            android:defaultValue="true"
+            android:summary="Capri-25 Polars require active Wind Anemometer" >
+        </CheckBoxPreference>
         <EditTextPreference
             android:title="Tack Angle"
             android:key="key_TackAngle"

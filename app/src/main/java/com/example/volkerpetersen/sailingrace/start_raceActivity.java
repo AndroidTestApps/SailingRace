@@ -30,10 +30,11 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import org.w3c.dom.Text;
-
-import java.text.DecimalFormat;
-
+/**
+ * RaceActivity class to manage all screen updates, location updates, and computations
+ * during the race.  This class supports race to Windward and Leeward marks (one each) and
+ * a manual wind mode (no Windex instrument) and a Windex instrument supported race mode
+ */
 public class start_raceActivity extends Activity {
     private TextView outputStatus;              // output field for the GPS status
     private TextView outputLatitude;
@@ -52,9 +53,10 @@ public class start_raceActivity extends Activity {
     private TextView outputTWS;                 // output field for BTM (True Wind Speed)
     private TextView outputAWA;                 // output field for BTM (Apparent Wind Angle)
     private TextView outputTWD;                 // output field for TWD (True Wind Direction)
-    private TextView outputPrefTack;            // output filed for the Preferred Tack to current Mark
-    private TextView outputWindwardMark;
+    private TextView outputGoalVMG;             // output field for Goal VMG to the current Mark
+    private TextView outputGoalVMGtext;         // output field for the text of the Goal VMG
     private TextView outputLeewardMark;
+    private TextView outputWindwardMark;
     private Button btnSetLeewardMark;
     private Button btnGoLeewardMark;
     private Button btnSetWindwardMark;
@@ -70,37 +72,28 @@ public class start_raceActivity extends Activity {
     private GestureDetectorCompat swipeDetector;    //  swipe detector listener in Class file swipeDetector
     private GPSTracker gps;                 // gps class object
     private GlobalParameters para;          // class object for the global parameters
-    private double apparentWindAngle=0.0;   // (true) compute from the windex data
-    private double trueWindDirection=60.0;  // (true) compute from the windex data
-    private double trueWindAngle=0.0;       // (true) compute from the windex data
-    private double trueWindSpeed=5.0;       // (kts) compute from the windex data
+    private double apparentWindAngle=0.0d;  // (true) compute from the windex data
+    private double trueWindDirection=60.0d; // (true) compute from the windex data
+    private double trueWindAngle=0.0d;      // (true) compute from the windex data
+    private double trueWindSpeed=5.0d;      // (kts) compute from the windex data
     private double meanHeadingTarget;       // Mean Heading Target either manual goal or current avg COG
     private double meanWindDirection;       // calculated by adding tackAngle / gybeAngle to COG
-    private double timeCounter = 0.0;       // keeps duration of current header / lift sequence
-    private double sumVariances = 0.0;      // sum of the heading variances while in a Header or Lift sequence
-    private double lastAvgVariance = 0.0;   // keeps track of the last avg variance between meanHeadingTarget and COG
-    private int history;                    // number of past screen update values kept in FIFO queue
+    private double timeCounter = 0.0d;      // keeps duration of current header / lift sequence
+    private double sumVariances = 0.0d;     // sum of the heading variances while in a Header or Lift sequence
+    private double lastAvgVariance = 0.0d;  // keeps track of the last avg variance between meanHeadingTarget and COG
     private int screenUpdates;              // screen update frequency in sec.  Set in preferences.
     private String tack = "stbd";           // "stbd" or "port" depending on current active board we're sailing on
-    private String prefTack;                // preferred tack computed for the Laylines to current Mark
-    private float CourseOffset=(float)0.0;  // Upwind leg=0.0  |  Downwind leg=180.0
-    private float TackGybe;                 // contains tackAngle Upwind and gybeAngle Downwind
-    private float tackAngle;                // upwind leg tack angle set in preferences
-    private float gybeAngle;                // downwind leg gybe angle set in preferences
+    private double CourseOffset = 0.0d;     // Upwind leg=0.0  |  Downwind leg=180.0
+    private double TackGybe;                // contains tackAngle Upwind and gybeAngle Downwind
+    private double tackAngle;               // upwind leg tack angle set in preferences
+    private double gybeAngle;               // downwind leg gybe angle set in preferences
+    private int polars;                     // =1 if the program is utilizing the build-in Capri-25 polars
+    private int windex;                     // from SharedPreferences to indicate if Windex is used (1) or not (0)
     private double[] DistanceBearing = new double[2];
     private int counter = 0;
-    private int windex;                     // from SharedPreferences to indicate if Windex is used (1) or not (0)
-    private DecimalFormat dfThree = new DecimalFormat("000");
-    private DecimalFormat dfTwo = new DecimalFormat("00");
-    private DecimalFormat dfOne = new DecimalFormat("#");
-    private DecimalFormat df2 = new DecimalFormat("#0.00");
-    private DecimalFormat df1 = new DecimalFormat("#0.0");
     private AlertDialog alert;
-    public Context context;
+    private Context appContext;
     static final String LOG_TAG = start_raceActivity.class.getSimpleName();
-    static final int GET_MAP_MARKER_POSITION = 1;   // Our request code to pass data back from map FragmentActivity
-    static final int RESULTS_OK = 1;                // Code to indicate correct results
-    static final int RESULTS_CANCELED = 0;          // Code to indicate correct results
     private ColorStateList WHITE;
     private ColorStateList RED;
     private ColorStateList GREEN;
@@ -109,30 +102,35 @@ public class start_raceActivity extends Activity {
     private fifoQueueDouble TWDfifo;
     private fifoQueueDouble COGfifo;
     private fifoQueueDouble SOGfifo;
-    private double TWSinc = 3.0;
-    private double TWAinc = 5.0;
+    private double TWSinc = 3.0d;
+    private double TWAinc = 5.0d;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        int history;                    // number of past screen update values kept in FIFO queue
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        context = getApplicationContext();
+        appContext = getApplicationContext();
+
+        // initialize our Global Parameter class by calling the
+        // Application class (see application tag in AndroidManifest.xml)
+        para = (GlobalParameters) appContext;
 
         // Instantiate the gesture detector with the
         // application context and an implementation of
         // GestureDetector.OnGestureListener
-        swipeDetector = new GestureDetectorCompat(this,new MySwipeListener());
+        swipeDetector = new GestureDetectorCompat(appContext, new MySwipeListener());
 
         // fetch the Shared Preferences from the class FetchPreferenceValues in file SailingRacePreferences
         // Shared Preferences key names are defined in SailingRacePreferences.OnCreate()
-        screenUpdates = SailingRacePreferences.FetchPreferenceValue("key_ScreenUpdates", context); // Time interval for screen update in seconds.
-        history = SailingRacePreferences.FetchPreferenceValue("key_history", context); // max number of location positions stored in LinkedList.
-        long gpsUpdates = (long) SailingRacePreferences.FetchPreferenceValue("key_GPSUpdateTime", context); // Time Interval for GPS position updates in milliseconds
-        float minDistance = (float) SailingRacePreferences.FetchPreferenceValue("key_GPSUpdateDistance", context); // min distance (m) between GPS updates
-        tackAngle = (float) SailingRacePreferences.FetchPreferenceValue("key_TackAngle", context);  // tack angle
-        gybeAngle = (float) SailingRacePreferences.FetchPreferenceValue("key_GybeAngle", context); // gybe angle
-        windex = SailingRacePreferences.FetchPreferenceValue("key_Windex", context); // boolean value to indicate if app is using / not using the Bluetooth connected Windex
-        TackGybe = tackAngle;
+        screenUpdates = SailingRacePreferences.FetchPreferenceValue("key_ScreenUpdates", appContext); // Time interval for screen update in seconds.
+        history = SailingRacePreferences.FetchPreferenceValue("key_history", appContext); // max number of location positions stored in LinkedList.
+        long gpsUpdates = (long) SailingRacePreferences.FetchPreferenceValue("key_GPSUpdateTime", appContext); // Time Interval for GPS position updates in milliseconds
+        double minDistance = (double) SailingRacePreferences.FetchPreferenceValue("key_GPSUpdateDistance", appContext); // min distance (m) between GPS updates
+        polars = SailingRacePreferences.FetchPreferenceValue("key_Polars", appContext); // =1 if we use Capri-25 build-in polars
+        tackAngle = (double) SailingRacePreferences.FetchPreferenceValue("key_TackAngle", appContext);  // tack angle
+        gybeAngle = (double) SailingRacePreferences.FetchPreferenceValue("key_GybeAngle", appContext); // gybe angle
+        windex = SailingRacePreferences.FetchPreferenceValue("key_Windex", appContext); // boolean value to indicate if app is using / not using the Bluetooth connected Windex
 
         if (windex == 1) {
             // we have a windex connected.  So, we'll use layout with the wind data
@@ -142,14 +140,6 @@ public class start_raceActivity extends Activity {
             setContentView(R.layout.activity_start_race);
         }
         setTitle("SailingRace - Racing");
-
-        /* Debugging log statements
-        Log.d(LOG_TAG, "tack Angle:" + Float.toString(tackAngle));
-        Log.d(LOG_TAG, "gybe Angle:" + Float.toString(gybeAngle));
-        Log.d(LOG_TAG, "History:   " + Integer.toString(history));
-        Log.d(LOG_TAG, "gpsUpdate: " + Long.toString(gpsUpdates));
-        Log.d(LOG_TAG, "Windex: " + Integer.toString(windex));
-        */
 
         // fetch all the display elements from the xml file
         outputStatus = (TextView) findViewById(R.id.Status);
@@ -188,34 +178,52 @@ public class start_raceActivity extends Activity {
             outputTWS = (TextView) findViewById(R.id.TWS);
             outputAWA = (TextView) findViewById(R.id.AWA);
             outputTWD = (TextView) findViewById(R.id.TWD);
-            outputWindwardMark = (TextView) findViewById(R.id.WindwardMark);
+            outputGoalVMG = (TextView) findViewById(R.id.GoalVMG);
+            outputGoalVMGtext = (TextView) findViewById(R.id.GoalVMGtext);
             outputLeewardMark = (TextView) findViewById(R.id.LeewardMark);
-            outputPrefTack = (TextView) findViewById(R.id.PrefTack);
+            outputWindwardMark = (TextView) findViewById(R.id.WindwardMark);
         }
 
         // initialize the color variables (type ColorStateList)
-        WHITE = ContextCompat.getColorStateList(context, R.color.WHITE);
-        RED = ContextCompat.getColorStateList(context, R.color.RED);
-        GREEN = ContextCompat.getColorStateList(context, R.color.GREEN);
+        WHITE = ContextCompat.getColorStateList(appContext, R.color.WHITE);
+        RED = ContextCompat.getColorStateList(appContext, R.color.RED);
+        GREEN = ContextCompat.getColorStateList(appContext, R.color.GREEN);
 
         // initialize the GPS tracker and ScreenUpdate
-        gps = new GPSTracker(start_raceActivity.this, para, gpsUpdates, minDistance, history);
+        gps = new GPSTracker(appContext, gpsUpdates, minDistance, history);
         ScreenUpdate.post(updateScreenNow);
+        TackGybe = NavigationTools.getTackAngle(windex, polars, tack, tackAngle, gybeAngle, CourseOffset, trueWindSpeed);
+        para.setTackGybe(TackGybe);
 
-        // initialize our Global Parameter class
-        para = new GlobalParameters();
-        //Log.d(LOG_TAG, "start_raceActivity value of 'leewardSet': "+para.leewardSet);
-        //Log.d(LOG_TAG, "start_raceActivity value of 'windwardSet': "+para.windwardSet);
-
-        if (para.leewardSet) {
-            para.leewardSet = false;
-            setLeewardMark();
-        }
-        if (para.windwardSet) {
-            para.windwardSet = false;
-            setWindwardMark(true);
+        // testing only
+        Log.d(LOG_TAG, "++++++++++++++++++++++++ Testing code  ++++++++++++++++++++++++");
+        if(gps.canGetLocation()) {
+            para.setBoatLat(gps.getLatitude());
+            para.setBoatLon(gps.getLongitude());
+            double[] mark = NavigationTools.withDistanceBearingToPosition(para.getBoatLat(), para.getBoatLon(), 1.3d, 60.0d);
+            para.setWindwardLat(mark[0]);
+            para.setWindwardLon(mark[1]);
+            para.setWindwardFlag(true);
+            mark = NavigationTools.withDistanceBearingToPosition(para.getBoatLat(), para.getBoatLon(), 1.3d, 240.0d);
+            para.setLeewardLat(mark[0]);
+            para.setLeewardLon(mark[1]);
+            para.setLeewardFlag(true);
             goWindwardMark();
         }
+        /*
+        double i = 3.0d;
+        double p[] = new double[2];
+        Log.d(LOG_TAG, "++++++ Polars Test");
+        Log.d(LOG_TAG, "Course     TWS   TBS   Tack Angle");
+        while (i < 16.0d) {
+            p = NavigationTools.getPolars(i, 0.0d);
+            Log.d(LOG_TAG, "Windward   "+appContext.getString(R.string.DF2, i) + "   " + appContext.getString(R.string.DF2, p[0]) + "   "+appContext.getString(R.string.DF2, p[1]));
+            p = NavigationTools.getPolars(i, 180.0d);
+            Log.d(LOG_TAG, "Leeward    " +appContext.getString(R.string.DF2, i) + "   " + appContext.getString(R.string.DF2, p[0]) + "   "+appContext.getString(R.string.DF2, p[1]));
+            i = i + 3.0;
+        }
+        */
+        // //end of testing code
 
         // initialize the FIFO queues to keep history for TWA, TWS, COG, SOG
         TWDfifo = new fifoQueueDouble(history);
@@ -223,70 +231,55 @@ public class start_raceActivity extends Activity {
         TWSfifo = new fifoQueueDouble(history);
         COGfifo = new fifoQueueDouble(history);
         SOGfifo = new fifoQueueDouble(history);
-        prefTack = "- -";
+        para.setBestTack("- -");
 
-        /* Test the FIFO queue class
-        Log.d(LOG_TAG, "FIFI Queue size: " + dfOne.format(history));
-        TWAfifo.add(3.0);
-        TWAfifo.add(6.0);
-        Log.d(LOG_TAG, "Average of 3, 6: " + df2.format(TWAfifo.average()));
-        TWAfifo.logQueue();
-        TWAfifo.add(9.0);
-        TWAfifo.add(12.0);
-        Log.d(LOG_TAG, "current queue elements (sorted First-In to Last-In");
-        TWAfifo.logQueue();
-        Log.d(LOG_TAG, "Average of 6, 9, 12: " + df2.format(TWAfifo.average()));
-        Log.d(LOG_TAG, "First value in FIFO: " + df2.format(TWAfifo.getFirst()));
-        TWAfifo.logQueue();
-        Log.d(LOG_TAG, "Last value in FIFO: " + df2.format(TWAfifo.getLast()));
-        // End of FIFO Queue test
-        */
-
+        // check for a Click on Boat to see if we want to Tack or Gybe
         boat.setOnClickListener(new View.OnClickListener() {
-            // listener to detect button press on the boat.  When pressed we're going to tack/jibe
             @Override
             public void onClick(View view) {
-                if (view == findViewById(R.id.boat)) {
-                    readyToTackOrGybe();
+            if (view == findViewById(R.id.boat)) {
+                if (tack.equals("stbd")) {
+                    tack = "port";
+                } else {
+                    tack = "stbd";
                 }
+                updateMarkerButtons();
+            }
             }
         });
 
+        // check for a long Click on Boat to see if we want to change from Upwind to Downwind or visa versa
         boat.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View view) {
-                // if we have a long Click, we want to change from Upwind to Downwind or visa versa
-                CourseOffset = (float) 180.0 - CourseOffset;
-                if (CourseOffset == 0.0) {
-                    TackGybe = tackAngle;
-                } else {
-                    TackGybe = -gybeAngle;
-                }
-                updateMarkerButtons();
-                //alertDialog.setMessage("We detected a long click on the boat image!");
-                //alertDialog.show();
-                //Toast toast = Toast.makeText(context, "long Click on Boat", Toast.LENGTH_LONG);
-                //toast.setGravity(Gravity.TOP| Gravity.CENTER, 0, 0);
-                //toast.show();
-                return true;
+            CourseOffset = 180.0d - CourseOffset;
+            para.setCourseOffset(CourseOffset);
+            if (CourseOffset == 0.0d) {
+                goWindwardMark();
+            } else {
+                goLeewardMark();
+            }
+            return true;
             }
         });
 
-        // initialize buttons only for the No-Windex option
+        /**
+         * initialize buttons only for the No-Windex option
+         */
         if (windex == 0) {
             btnSetLeewardMark.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    // if we have a Click, we want to go Set or Clear the Leeward mark
-                    setLeewardMark();
+                // if we have a Click, we want to go Set or Clear the Leeward mark
+                setLeewardMark();
                 }
             });
 
             btnSetWindwardMark.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    // if we have a Click, we want to go Set or Clear the Windward mark
-                    setWindwardMark(false);
+                // if we have a Click, we want to go Set or Clear the Windward mark
+                setWindwardMark(false);
                 }
             });
 
@@ -294,22 +287,12 @@ public class start_raceActivity extends Activity {
                 // if we have a long Click, we want to go to Google Maps to set the mark on the map
                 @Override
                 public boolean onLongClick(View view) {
-                    if (para.windwardSet) {
-                        return true;
-                    }
-                    // creating a bundle object to pass data to the Google Maps Fragment (MapsActivity)
-                    Bundle bundle = new Bundle();
-                    bundle.putDouble("boatLat", para.latitude);
-                    bundle.putDouble("boatLon", para.longitude);
-                    bundle.putDouble("markerLat", Double.NaN);
-                    bundle.putDouble("markerLon", Double.NaN);
-
-                    Intent intent = new Intent(context, MapsActivity.class);
-                    intent.putExtras(bundle);
-                    // the "startActivityForResults" system method allows the calls upon Fragment to return results.
-                    // the results are processed in the method onActivityResults() below.
-                    startActivityForResult(intent, GET_MAP_MARKER_POSITION);
+                // check if the Windward Mark has been set (WindwardFlag=true)
+                if (para.getWindwardFlag()) {
                     return true;
+                }
+                startActivity(new Intent(appContext, MapsActivity.class));
+                return true;
                 }
             });
 
@@ -350,6 +333,11 @@ public class start_raceActivity extends Activity {
         alert = builder.create();
     }
 
+    /**
+     * Initialize Touch Events to be able to find Screen Swipes
+     * @param MotionEvent event
+     * @return onTouchEvent
+     */
     @Override
     public boolean onTouchEvent(MotionEvent event){
         this.swipeDetector.onTouchEvent(event);
@@ -357,8 +345,10 @@ public class start_raceActivity extends Activity {
         return super.onTouchEvent(event);
     }
 
-    // Method to implement the Swipe Gesture detection.  This class requires the above
-    // method "onTouchEvent"
+    /**
+     * MySwipeListener Method to detect Swipe Gestures.  This class requires the above
+     * method "onTouchEvent"
+     */
     class MySwipeListener extends GestureDetector.SimpleOnGestureListener {
         private static final String DEBUG_TAG = "Gestures";
 
@@ -424,6 +414,26 @@ public class start_raceActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+
+        /*
+        Log.d(LOG_TAG, "+++++++++++++++++++++++++++++ On Resume ++++++++++++++++++++++++++++++++");
+        Log.d(LOG_TAG, "Windward Lat  " + appContext.getString(R.string.DF3, para.getWindwardLat()));
+        Log.d(LOG_TAG, "Windward Race " + para.getWindwardRace());
+        Log.d(LOG_TAG, "Windward Flag " + para.getWindwardFlag());
+        Log.d(LOG_TAG, "Leeward Lat   " + appContext.getString(R.string.DF3, para.getLeewardLat()));
+        Log.d(LOG_TAG, "Boat Lat      " + appContext.getString(R.string.DF3, para.getBoatLat()));
+        Log.d(LOG_TAG, "para          " + para);
+        */
+
+        if (para.getWindwardFlag() && para.getWindwardRace()) {
+            goWindwardMark();
+        }
+        if (para.getLeewardFlag() && para.getLeewardRace()) {
+            goLeewardMark();
+        }
+
+        updateMarkerButtons();
+        ScreenUpdate.post(updateScreenNow);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
@@ -433,74 +443,34 @@ public class start_raceActivity extends Activity {
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
-    // method that retrieves the data which has been returned from the Google Maps FragmentActivity (MapsActivity)
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent intent) {
-        super.onActivityResult(requestCode, resultCode, intent);
-        // Check which request we're responding to.  Here we're interested in the Google Maps marker position
-        ScreenUpdate.post(updateScreenNow);     // restart the Screen Updates
-        if (requestCode == GET_MAP_MARKER_POSITION) {
-            // Make sure the request was successful
-            if (resultCode == RESULT_OK) {
-                // a Marker position has been set.  Make that our Windward mark.
-                Bundle extras = intent.getExtras();
-                para.windwardLAT = extras.getDouble("markerLat");
-                para.windwardLON = extras.getDouble("markerLon");
-                para.windwardSet = false;
-                prefTack = extras.getString("PrefTack");
-                setWindwardMark(true);
-                goWindwardMark();
-                DistanceBearing = NavigationTools.MarkDistanceBearing(para.latitude, para.longitude, para.windwardLAT, para.windwardLON);
-                //Log.d(LOG_TAG, "onActivityResult DTM:" + df2.format(DistanceBearing[0]));
-                //Log.d(LOG_TAG, "onActivityResult BTM:" + df1.format(DistanceBearing[1]) + "°");
-            } else {
-                // TODO here any error handling for resultCode != RESULT_OK
-                //Log.d(LOG_TAG, "onActivityResult was closed w/o setting the marker position");
-            }
-        }
-        //Log.d(LOG_TAG, "onActivityResult resultCode = " + resultCode + " requestCode " + requestCode);
-    }
-
-    // Method execute the desired action after the Class "swipeDetector" detected a left or right swipe
+    /**
+     * changeActivityOnSwipe Method executes the desired action after the Class "swipeDetector"
+     * detected a left or right swipe.  In this case we'll change to the MapsActivity on swipe detection
+     */
     public void changeActivityOnSwipe() {
         // creating a bundle object to pass data to the Google Maps Fragment (MapsActivity)
         ScreenUpdate.removeCallbacks(updateScreenNow);   // stop the ScreenUpdate Handler Runnable
-        Bundle bundle = new Bundle();
-        bundle.putBoolean("windwardRace", para.windwardRace);
-        bundle.putBoolean("leewardRace", para.leewardRace);
-        bundle.putDouble("windwardLat", para.windwardLAT);
-        bundle.putDouble("windwardLon", para.windwardLON);
-        bundle.putDouble("leewardLat", para.leewardLAT);
-        bundle.putDouble("leewardLon", para.leewardLON);
-        bundle.putDouble("boatLat", para.latitude);
-        bundle.putDouble("boatLon", para.longitude);
-        bundle.putDouble("COG", para.COG);
-        bundle.putDouble("TWD", TWDfifo.average());
-        bundle.putDouble("CourseOffset", CourseOffset);
-        bundle.putString("tack", tack);
-        bundle.putDouble("TackGybe", TackGybe);
-
-        Intent intent = new Intent(context, MapsActivity.class);
-        intent.putExtras(bundle);
-        // the "startActivityForResults" system method allows the calls upon Fragment to return results.
-        // the results are processed in the method onActivityResults() below.
-        startActivityForResult(intent, GET_MAP_MARKER_POSITION);
+        para.setTWD(trueWindDirection);                  // save the current TWD
+        startActivity(new Intent(appContext, MapsActivity.class));
     }
 
-    // Method to handle the "Quit" confirmation
+    /**
+     * confirmQuit Method handles the "Quit" confirmation so that the user doesn't quit the race
+     * activity by accidentially hitting the back button
+     */
     private void confirmQuit() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setMessage(R.string.QuitRace);
         builder.setPositiveButton("Yes",new DialogInterface.OnClickListener() {
             public void onClick (DialogInterface dialog,int id){
-                // Go ahead quit this race
-                finish();
+            // Go ahead quit this race
+            finish();
             }
         });
         builder.setNegativeButton("No",new DialogInterface.OnClickListener() {
             public void onClick (DialogInterface dialog,int id){
-                // User cancelled the dialog. Go ahead and continue the app
-                onResume();
+            // User cancelled the dialog. Go ahead and continue the app
+            onResume();
              }
         });
         // Create the AlertDialog object and return it
@@ -534,130 +504,155 @@ public class start_raceActivity extends Activity {
         }
     }
 
-    //-----------------------------------------------------------------------------------------
-    // Runnable to update the display every "screenUpdates" seconds
-    //-----------------------------------------------------------------------------------------
+    /**
+     * Runnable to update the display every "screenUpdates" seconds.  The screen update delay
+     * can be specified using the Setting parameter Screen Updates.
+     *
+     * Within this runnable we obtain the latest GPS position, perform all computations, and
+     * update the screen display with the results.
+     */
     Runnable updateScreenNow = new Runnable() {
         public void run() {
-            String tmp;
-            double delta;
+        String tmp;
+        double delta;
+        double[] Laylines = new double[3];
+        double[] goalPolars = new double[2];
+        double goalVMG;
 
-            if (gps.canGetLocation()) {
-                para.latitude = gps.getLatitude();
-                para.longitude = gps.getLongitude();
-                gps.getHeading();
-                gps.getSpeed();
-                gps.getAvgSpeedHeading();
-                counter = (counter + 1);
+        if (gps.canGetLocation()) {
+            para.setBoatLat(gps.getLatitude());
+            para.setBoatLon(gps.getLongitude());
+            gps.getHeading();
+            gps.getSpeed();
+            gps.getAvgSpeedHeading();
+            counter = (counter + 1);
+        } else {
+            gps.showSettingsAlert();
+        }
+
+        // if we have an active Leeward or Windward mark, compute distance and Bearing to mark and the optimum Laylines
+        if (para.getLeewardRace()) {
+            DistanceBearing = NavigationTools.MarkDistanceBearing(para.getBoatLat(), para.getBoatLon(), para.getLeewardLat(), para.getLeewardLon());
+            Laylines = NavigationTools.optimumLaylines(para.getBoatLat(), para.getBoatLon(), para.getLeewardLat(), para.getLeewardLon(), trueWindDirection, para.getCourseOffset(), TackGybe, tack);
+            para.setBestTack(NavigationTools.LaylinesString(Laylines[2]));
+        }
+        if (para.getWindwardRace()) {
+            DistanceBearing = NavigationTools.MarkDistanceBearing(para.getBoatLat(), para.getBoatLon(), para.getWindwardLat(), para.getWindwardLon());
+            Laylines = NavigationTools.optimumLaylines(para.getBoatLat(), para.getBoatLon(), para.getWindwardLat(), para.getWindwardLon(), trueWindDirection, para.getCourseOffset(), TackGybe, tack);
+            para.setBestTack(NavigationTools.LaylinesString(Laylines[2]));
+        }
+
+        if (para.getLeewardRace() || para.getWindwardRace()) {
+            outputDTM.setText(appContext.getString(R.string.DF2, DistanceBearing[0]));     // update DTM (Distance-To-Mark) in nm
+            tmp = appContext.getString(R.string.Degrees,NavigationTools.fixAngle(DistanceBearing[1]+para.getDeclination()));
+            outputBTM.setText(tmp);  // update BTM (Bearing-To-Mark)
+            // computing meanHeadingTarget which now is theoretical BTM plus TackGybe angle
+            if (tack.equals("stbd")) {
+                meanHeadingTarget = NavigationTools.fixAngle(DistanceBearing[1] - TackGybe + para.getDeclination());
             } else {
-                gps.showSettingsAlert();
+                meanHeadingTarget = NavigationTools.fixAngle(DistanceBearing[1] + TackGybe + para.getDeclination());
             }
+        }
 
-            // if we have an active Leeward or Windward mark, compute distance and Bearing to mark
-            if (para.leewardRace) {
-                DistanceBearing = NavigationTools.MarkDistanceBearing(para.latitude, para.longitude, para.leewardLAT, para.leewardLON);
+        if (windex == 1) {
+            // dummy wind data
+            trueWindDirection  = NavigationTools.fixAngle(trueWindDirection + TWAinc);
+            apparentWindAngle  = (apparentWindAngle + TWAinc);
+            trueWindSpeed     += TWSinc;
+            if (trueWindSpeed >= 25.0 || trueWindSpeed <= 5.0) {
+                TWSinc = 0.0 - TWSinc;
             }
-            if (para.windwardRace) {
-                DistanceBearing = NavigationTools.MarkDistanceBearing(para.latitude, para.longitude, para.windwardLAT, para.windwardLON);
+            if (Math.abs(trueWindDirection) >= 90.0 && TWAinc > 0.0) {
+                TWAinc = 0.0 - TWAinc;
             }
-
-            if (para.leewardRace || para.windwardRace) {
-                outputDTM.setText(df2.format(DistanceBearing[0]));          // update DTM (Distance-To-Mark) in nm
-                tmp = dfOne.format(NavigationTools.fixAngle(DistanceBearing[1]+para.declination)) + "°";
-                outputBTM.setText(tmp);  // update BTM (Bearing-To-Mark)
-                // computing meanHeadingTarget which now is theoretical BTM plus TackGybe angle
-                if (tack.equals("stbd")) {
-                    meanHeadingTarget = NavigationTools.fixAngle(DistanceBearing[1] - TackGybe + para.declination);
-                } else {
-                    meanHeadingTarget = NavigationTools.fixAngle(DistanceBearing[1] + TackGybe + para.declination);
-                }
+            if (Math.abs(trueWindDirection) < 40.0 && TWAinc < 0.0) {
+                TWAinc = 0.0 - TWAinc;
             }
+            trueWindAngle = TackGybe + TWAinc;
+            // end of dummy wind data
 
-            if (windex == 1) {
-                // dummy wind data
-                trueWindDirection      = NavigationTools.fixAngle(trueWindDirection + TWAinc);
-                apparentWindAngle  = (apparentWindAngle + TWAinc);
-                trueWindSpeed     += TWSinc;
-                if (trueWindSpeed >= 25.0 || trueWindSpeed <= 5.0) {
-                    TWSinc = 0.0 - TWSinc;
-                }
-                if (Math.abs(trueWindDirection) >= 90.0 && TWAinc > 0.0) {
-                    TWAinc = 0.0 - TWAinc;
-                }
-                if (Math.abs(trueWindDirection) < 40.0 && TWAinc < 0.0) {
-                    TWAinc = 0.0 - TWAinc;
-                }
-                trueWindAngle = TackGybe + TWAinc;
-                // end of dummy wind data
+            goalPolars = NavigationTools.getPolars(trueWindSpeed, CourseOffset);
+            goalVMG = goalPolars[0] * Math.cos(Math.toRadians(goalPolars[1]));
 
-                TWSfifo.add(trueWindSpeed);
-                TWAfifo.add(trueWindAngle);
-                TWDfifo.add(trueWindDirection);
-                //Log.d(LOG_TAG, "avg TWS: " + df2.format(TWSfifo.average()));
-                //Log.d(LOG_TAG, "avg TWA: "+df2.format(TWAfifo.average()));
+            TWSfifo.add(trueWindSpeed);
+            TWAfifo.add(trueWindAngle);
+            TWDfifo.add(trueWindDirection);
+            //Log.d(LOG_TAG, "avg TWS: " + appContext.getString(R.string.DF1, TWSfifo.average()));
+            //Log.d(LOG_TAG, "avg TWA: "+ appContext.getString(R.string.DF1, TWAfifo.average()));
 
-                // end of dummy wind data
+            // end of dummy wind data
 
-                if (para.leewardRace || para.windwardRace) {
-                    delta = NavigationTools.HeadingDelta(DistanceBearing[1], (trueWindDirection - CourseOffset));
-                } else {
-                    delta = trueWindAngle-TackGybe;
-                }
-                tmp = dfOne.format(NavigationTools.fixAngle(trueWindDirection + para.declination)) + "°";
-                outputTWD.setText(tmp);
-                tmp = dfOne.format(NavigationTools.fixAngle(trueWindAngle + para.declination)) + "°";
-                outputTWA.setText(tmp);
-                tmp = dfOne.format(NavigationTools.fixAngle(apparentWindAngle + para.declination)) + "°";
-                outputAWA.setText(tmp);
-                outputTWS.setText(df1.format(trueWindSpeed));
-                outputPrefTack.setText(prefTack);
+            if (para.getWindwardRace() || para.getWindwardRace()) {
+                delta = NavigationTools.HeadingDelta(DistanceBearing[1], (trueWindDirection - CourseOffset));
             } else {
-                // compute the deviation from our "meanHeadingTarget"
-                delta = NavigationTools.HeadingDelta(meanHeadingTarget, para.COG);
-                outputMeanHeadingTarget.setText(dfThree.format(meanHeadingTarget));
-                tmp = dfOne.format(NavigationTools.fixAngle(meanWindDirection + para.declination))+"°";
-                outputMWD.setText(tmp);
+                delta = trueWindAngle-TackGybe;
             }
+            tmp = appContext.getString(R.string.Degrees, NavigationTools.fixAngle(trueWindDirection + para.getDeclination()));
+            outputTWD.setText(tmp);
+            tmp = appContext.getString(R.string.Degrees, NavigationTools.fixAngle(trueWindAngle + para.getDeclination()));
+            outputTWA.setText(tmp);
+            tmp = appContext.getString(R.string.Degrees, NavigationTools.fixAngle(apparentWindAngle + para.getDeclination()));
+            outputAWA.setText(tmp);
+            outputTWS.setText(appContext.getString(R.string.DF1, trueWindSpeed));
 
-            updateBarChart(delta);
-            lastAvgVariance = updateVarianceSumAvg(delta, lastAvgVariance);
+            outputGoalVMG.setText(appContext.getString(R.string.DF1, goalVMG));
+            tmp = para.getBestTack();
+            if (tmp.equals("Stbd")) {
+                outputGoalVMG.setTextColor(GREEN);
+                outputGoalVMGtext.setTextColor(GREEN);
+            } else if (tmp.equals("Port")) {
+                outputGoalVMG.setTextColor(RED);
+                outputGoalVMGtext.setTextColor(RED);
+            } else {
+                outputGoalVMG.setTextColor(WHITE);
+                outputGoalVMGtext.setTextColor(WHITE);
+            }
+        } else {
+            // compute the deviation from our "meanHeadingTarget"
+            delta = NavigationTools.HeadingDelta(meanHeadingTarget, para.getCOG());
+            outputMeanHeadingTarget.setText(appContext.getString(R.string.DF0, meanHeadingTarget));
+            tmp = appContext.getString(R.string.Degrees, NavigationTools.fixAngle(meanWindDirection + para.getDeclination()));
+            outputMWD.setText(tmp);
+        }
 
-            COGfifo.add(para.COG);
-            SOGfifo.add(para.SOG);
-            //Log.d(LOG_TAG, "avg COG: " + df2.format(COGfifo.average()));
-            //Log.d(LOG_TAG, "avg SOG: " + df2.format(SOGfifo.average()));
+        updateBarChart(delta);
+        lastAvgVariance = updateVarianceSumAvg(delta, lastAvgVariance);
 
-            /*
-            add tack/gybe and course change detection after everything else
-            has been debugged.
-            checkForTackGybe();
-            checkForUpwindDownwindChange();
-            */
+        COGfifo.add(para.getCOG());
+        SOGfifo.add(para.getSOG());
 
-            tmp = dfOne.format(para.COG) + "°";
-            outputCOG.setText(tmp);
+        /*
+        add tack/gybe and course change detection after everything else
+        has been debugged.
+        checkForTackGybe();
+        checkForUpwindDownwindChange();
+        */
 
-            outputSOG.setText(df1.format(para.SOG)); // or use avgSOG
-            double vmgu = NavigationTools.calcVMGu(TWAfifo.average(), CourseOffset, para.SOG);
-            tmp = dfOne.format(vmgu*100.0) + "%";
-            outputVMG.setText(tmp);
+        tmp = appContext.getString(R.string.Degrees, para.getCOG());
+        outputCOG.setText(tmp);
 
-            outputStatus.setText(para.gpsStatus);
+        tmp = appContext.getString(R.string.DF1, para.getSOG());
+        outputSOG.setText(tmp); // or use avgSOG
+        double vmgu = NavigationTools.calcVMGu(TWAfifo.average(), CourseOffset, para.getSOG());
+        tmp = appContext.getString(R.string.DF1, vmgu);
+        outputVMG.setText(tmp);
 
-            tmp = "Lat:" + NavigationTools.PositionDegreeToString(para.latitude, true);
-            outputLatitude.setText(tmp);
+        outputStatus.setText(para.getGpsStatus());
 
-            tmp = "Lon:" + NavigationTools.PositionDegreeToString(para.longitude, false) + "  δ:" + df1.format(para.declination);
-            outputLongitude.setText(tmp);
+        tmp = "Lat:" + NavigationTools.PositionDegreeToString(para.getBoatLat(), true);
+        outputLatitude.setText(tmp);
 
-            // set the screen display frequency
-            ScreenUpdate.postDelayed(this, (long) (screenUpdates * 1000));
+        tmp = "Lon:" + NavigationTools.PositionDegreeToString(para.getBoatLon(), false) + "  δ:" + appContext.getString(R.string.DF1, para.getDeclination());
+        outputLongitude.setText(tmp);
+
+        // set the screen display frequency
+        ScreenUpdate.postDelayed(this, (long) (screenUpdates * 1000));
         }
     };
 
-    //-----------------------------------------------------------------------------------------
-    // Class methods to update the heading variances SUM and AVG
-    //-----------------------------------------------------------------------------------------
+    /**
+     * Class methods to compute for the heading variances the sum totals and averages
+     */
     public double updateVarianceSumAvg(double delta, double last) {
         double avgVariance = 0.0;
         double sign = 1.0;
@@ -675,7 +670,7 @@ public class start_raceActivity extends Activity {
         // Upwind    -   +    +   -    necessary value of sign in order to yield a negative values
         // Downwind  +   -    -   +    for Header and positive values for Lift situations
         //
-        if (CourseOffset == 0.0) {
+        if (CourseOffset == 0.0d) {
             // Upwind leg (CourseOffset = 0.0)
             sign = 1.0;
         } else {
@@ -706,16 +701,17 @@ public class start_raceActivity extends Activity {
             outputHeaderLift.setText("Lift");
             outputHeaderLift.setTextColor(GREEN);
         }
-        tmp = dfOne.format(Math.abs(avgVariance)) + "°";
+        tmp = appContext.getString(R.string.Degrees, Math.abs(avgVariance));
         outputAvgVariance.setText(tmp);
-        tmp = dfTwo.format((long)(timeCounter/60.0))+":"+dfTwo.format(NavigationTools.Mod(timeCounter, 60.0));
+        tmp = appContext.getString(R.string.MinSec, (timeCounter / 60.0), NavigationTools.Mod(timeCounter, 60.0));
         outputVarDuration.setText(tmp);
 
         return avgVariance;
     }
-    //-----------------------------------------------------------------------------------------
-    // Class methods to update the bar chart on bottom of screen
-    //-----------------------------------------------------------------------------------------
+    /**
+     * Class methods to update the bar chart on bottom of screen displaying the heading or lift
+     * degrees ranging from 0-20.
+     */
     public void updateBarChart(double delta) {
         int index;
         String left;
@@ -727,19 +723,19 @@ public class start_raceActivity extends Activity {
         }
         if ( tack.equals("stbd") ) {
             if (delta < 0.0) {
-                left = "left"+dfTwo.format(index);
+                left = "left"+ appContext.getString(R.string.DFtwo, index);
                 right = "right00";
             } else {
                 left = "left00";
-                right = "right" + dfTwo.format(index);
+                right = "right" + appContext.getString(R.string.DFtwo, index);
             }
         } else {
             if (delta < 0.0) {
-                left = "left"+dfTwo.format(index);
+                left = "left"+appContext.getString(R.string.DFtwo, index);
                 right = "right00";
             } else {
                 left = "left00";
-                right = "right"+dfTwo.format(index);
+                right = "right"+appContext.getString(R.string.DFtwo, index);
             }
         }
 
@@ -750,112 +746,134 @@ public class start_raceActivity extends Activity {
         rightBar.setImageResource(rightImage);
     }
 
-    //-----------------------------------------------------------------------------------------
-    // Class methods to increase/decrease the Mean Heading target
-    // initiated by UI buttons
-    //-----------------------------------------------------------------------------------------
+    /**
+     * Class methods to increase/decrease the Mean Heading target values.
+     * These Methods get initiated by UI buttons
+     */
     public void decreaseMeanHeading(View view) {
         meanHeadingTarget = NavigationTools.fixAngle(meanHeadingTarget - 1.0);
-        outputMeanHeadingTarget.setText(dfThree.format(meanHeadingTarget));
+        outputMeanHeadingTarget.setText(appContext.getString(R.string.DF0, meanHeadingTarget));
         meanWindDirection = MWD();
     }
 
     public void increaseMeanHeading(View view) {
         meanHeadingTarget = NavigationTools.fixAngle(meanHeadingTarget + 1.0);
-        outputMeanHeadingTarget.setText(dfThree.format(meanHeadingTarget));
+        outputMeanHeadingTarget.setText(appContext.getString(R.string.DF0, meanHeadingTarget));
         meanWindDirection = MWD();
     }
 
     public void decreaseMeanHeading10(View view) {
         meanHeadingTarget = NavigationTools.fixAngle(meanHeadingTarget - 10.0);
-        outputMeanHeadingTarget.setText(dfThree.format(meanHeadingTarget));
+        outputMeanHeadingTarget.setText(appContext.getString(R.string.DF0, meanHeadingTarget));
         meanWindDirection = MWD();
     }
 
     public void increaseMeanHeading10(View view) {
         meanHeadingTarget = NavigationTools.fixAngle(meanHeadingTarget + 10.0);
-        outputMeanHeadingTarget.setText(dfThree.format(meanHeadingTarget));
+        outputMeanHeadingTarget.setText(appContext.getString(R.string.DF0, meanHeadingTarget));
         meanWindDirection = MWD();
     }
 
-    //-----------------------------------------------------------------------------------------
-    // Class methods to set Windward and Leeward marks
-    // initiated by UI buttons defined in activity_start_race and the onClick listener in onCreate
-    //-----------------------------------------------------------------------------------------
+    /**
+     * Class methods to set the Windward mark at the current boat location.
+     * initiated by UI buttons defined in activity_start_race and the onClick listener in onCreate
+     *
+     * @param mapMarkerSet - boolean that is true when a position has been set. In that case this
+     *                       method will delete the existing mark
+     */
     public void setWindwardMark(boolean mapMarkerSet) {
         if (!mapMarkerSet) {
-            para.windwardLAT = gps.getLatitude();
-            para.windwardLON = gps.getLongitude();
+            para.setWindwardLat(gps.getLatitude());
+            para.setWindwardLon(gps.getLongitude());
         }
-        if (para.windwardSet) {
+        if (para.getWindwardFlag()) {
             // display a confirmation dialog to make sure user wants to delete the mark position
             alert.show();
         } else {
-            para.windwardSet = true;
+            para.setWindwardFlag(true);
         }
         updateMarkerButtons();
     }
 
+    /**
+     * Class methods to set the Leeward mark at the current boat location.
+     * initiated by UI buttons defined in activity_start_race and the onClick listener in onCreate
+     *
+     */
     public void setLeewardMark() {
-        para.leewardLAT = gps.getLatitude();
-        para.leewardLON = gps.getLongitude();
-        if (para.leewardSet) {
+        para.setLeewardLat(gps.getLatitude());
+        para.setLeewardLon(gps.getLongitude());
+        if (para.getLeewardFlag()) {
             // display a confirmation dialog to make sure user wants to delete the mark position
             alert.show();
         } else {
-            para.leewardSet = true;
+            para.setLeewardFlag(true);
         }
         updateMarkerButtons();
     }
 
+    /**
+     * The "clearPositionMark" method is called from the AlertDialog "alert" created in the
+     * onCreate method when user confirms the deletion of a current Windward or Leeward marker.
+     */
     public void clearPositionMark() {
-        // this method is called from the AlertDialog "alert" created in the onCreate method
-        // when user confirms the deletion of a current Windward or Leeward marker we
-        // will do so in this method
-        if (para.windwardSet) {
-            para.windwardSet = false;
-            para.windwardLAT = Double.NaN;
-            para.windwardLON = Double.NaN;
+        if (para.getWindwardFlag()) {
+            para.setWindwardFlag(false);
+            para.setWindwardRace(false);
+            para.setWindwardLat(Double.NaN);
+            para.setWindwardLon(Double.NaN);
         }
-        if (para.leewardSet) {
-            para.leewardSet = false;
-            para.leewardLAT = Double.NaN;
-            para.leewardLON = Double.NaN;
+        if (para.getLeewardFlag()) {
+            para.setLeewardFlag(false);
+            para.setLeewardRace(false);
+            para.setLeewardLat(Double.NaN);
+            para.setLeewardLon(Double.NaN);
         }
         updateMarkerButtons();
     }
-    //-----------------------------------------------------------------------------------------
-    // Class methods to start racing toward Windward and Leeward marks
-    // initiated by UI buttons defined in activity_start_race
-    //-----------------------------------------------------------------------------------------
+    /**
+     * Class method to start racing toward Windward mark
+     * initiated by UI buttons defined in activity_start_race
+     */
     public void goWindwardMark() {
-        if (para.windwardSet) {
-            para.windwardRace = true;
-            para.leewardRace = false;
-            CourseOffset = (float) 0.0;     // on Upwind leg we sail to the wind, no correct required
-            TackGybe = tackAngle;
+        if (para.getWindwardFlag()) {
+            para.setWindwardRace(true);
+            para.setLeewardRace(false);
+            CourseOffset = 0.0d;            // on Upwind leg we sail to the wind, no correct required
+            para.setCourseOffset(CourseOffset);
+            TackGybe = NavigationTools.getTackAngle(windex, polars, tack, tackAngle, gybeAngle, CourseOffset, trueWindSpeed);
+            para.setTackGybe(TackGybe);
         } else {
-            para.windwardRace = false;
+            para.setWindwardRace(false);
         }
         updateMarkerButtons();
     }
 
+    /**
+     * Class method to start racing toward Leeward mark
+     * initiated by UI buttons defined in activity_start_race
+     */
     public void goLeewardMark() {
-        if (para.leewardSet) {
-            para.leewardRace = true;
-            para.windwardRace = false;
-            CourseOffset = (float) 180.0;   // on Downwind leg we sail away from the wind
-            TackGybe = -gybeAngle;          // since on Downwind leg the math is opposite to Upwind legs
+        if (para.getLeewardFlag()) {
+            para.setLeewardRace(true);
+            para.setWindwardRace(false);
+            CourseOffset = 180.0d;          // on Downwind leg we sail away from the wind
+            para.setCourseOffset(CourseOffset);
+            TackGybe = NavigationTools.getTackAngle(windex, polars, tack, tackAngle, gybeAngle, CourseOffset, trueWindSpeed);
+            para.setTackGybe(TackGybe);
         } else {
-            para.leewardRace = false;
+            para.setLeewardRace(false);
         }
         updateMarkerButtons();
     }
 
+    /**
+     * Class method to update the color/text in the Marker Buttons
+     */
     public void updateMarkerButtons() {
         if (windex == 0) {
             // only need to worry about these button when we're in the non-Windex mode
-            if (para.windwardSet || para.leewardSet) {
+            if (para.getWindwardFlag() || para.getLeewardFlag()) {
                 // we update the button status to false (inactive) when the "markerIsSet" is set to true
                 btnMinusTen.setEnabled(false);
                 btnMinusOne.setEnabled(false);
@@ -868,20 +886,20 @@ public class start_raceActivity extends Activity {
                 btnPlusTen.setEnabled(true);
                 btnPlusOne.setEnabled(true);
             }
-            if (para.leewardSet && para.leewardRace) {
+            if (para.getLeewardFlag() && para.getLeewardRace()) {
                 btnSetLeewardMark.setText("CLR");
                 btnGoLeewardMark.setTextColor(GREEN);
-            } else if (para.leewardSet) {
+            } else if (para.getLeewardFlag()) {
                 btnSetLeewardMark.setText("CLR");
                 btnGoLeewardMark.setTextColor(RED);
             } else {
                 btnSetLeewardMark.setText("SET");
                 btnGoLeewardMark.setTextColor(WHITE);
             }
-            if (para.windwardSet && para.windwardRace) {
+            if (para.getWindwardFlag() && para.getWindwardRace()) {
                 btnSetWindwardMark.setText("CLR");
                 btnGoWindwardMark.setTextColor(GREEN);
-            } else if (para.windwardSet) {
+            } else if (para.getWindwardFlag()) {
                 btnSetWindwardMark.setText("CLR");
                 btnGoWindwardMark.setTextColor(RED);
             } else {
@@ -889,20 +907,20 @@ public class start_raceActivity extends Activity {
                 btnGoWindwardMark.setTextColor(WHITE);
             }
         } else {
-            if (para.leewardSet && para.leewardRace) {
-                outputLeewardMark.setText("Leeward Mark: GO");
+            if (para.getLeewardFlag() && para.getLeewardRace()) {
+                outputLeewardMark.setText("LWD Mark: GO");
                 outputLeewardMark.setTextColor(GREEN);
-            } else if (para.leewardSet) {
-                outputLeewardMark.setText("Leeward Mark: SET");
+            } else if (para.getLeewardFlag()) {
+                outputLeewardMark.setText("LWD Mark: SET");
                 outputLeewardMark.setTextColor(RED);
             } else {
-                outputLeewardMark.setText("Leeward Mark: Not Set");
+                outputLeewardMark.setText("LWD Mark: Not Set");
                 outputLeewardMark.setTextColor(WHITE);
             }
-            if (para.windwardSet && para.windwardRace) {
-                outputWindwardMark.setText("Windward Mark: GO");
+            if (para.getWindwardFlag() && para.getWindwardRace()) {
+                outputWindwardMark.setText("WWD Mark: GO");
                 outputWindwardMark.setTextColor(GREEN);
-            } else if (para.windwardSet) {
+            } else if (para.getWindwardFlag()) {
                 outputWindwardMark.setText("WWD Mark: SET");
                 outputWindwardMark.setTextColor(RED);
             } else {
@@ -914,9 +932,10 @@ public class start_raceActivity extends Activity {
         sumVariances = 0.0;
         gps.LocationList.clear();
         gps.LocationList.clear();
-        if (CourseOffset == 0.0) {
+
+        if (CourseOffset == 0.0d) {
             // Upwind leg - we need to change meanHeadingTaget from downwind to upwind leg
-            TackGybe = tackAngle;
+            TackGybe = NavigationTools.getTackAngle(windex, polars, tack, tackAngle, gybeAngle, CourseOffset, trueWindSpeed);
             if (tack.equals("stbd")) {
                 meanHeadingTarget = NavigationTools.fixAngle(meanHeadingTarget - gybeAngle - 180.0 - tackAngle);
                 boat.setImageResource(R.drawable.boatgreen);
@@ -926,7 +945,7 @@ public class start_raceActivity extends Activity {
             }
         } else {
             // Downwind leg - we need to change meanHeadingTaget from upwind to downwind leg
-            TackGybe = -gybeAngle;          // since on Downwind leg the math is opposite to Upwind legs
+            TackGybe = NavigationTools.getTackAngle(windex, polars, tack, tackAngle, gybeAngle, CourseOffset, trueWindSpeed);
             if (tack.equals("stbd")) {
                 meanHeadingTarget = NavigationTools.fixAngle(meanHeadingTarget + tackAngle + 180.0 + gybeAngle);
                 boat.setImageResource(R.drawable.boatgreen_reach);
@@ -935,12 +954,13 @@ public class start_raceActivity extends Activity {
                 boat.setImageResource(R.drawable.boatred_reach);
             }
         }
+        para.setTackGybe(TackGybe);
     }
 
-    //-----------------------------------------------------------------------------------------
-    // Class method to compute a theoretical MWD from the meanHeadingTarget and the
-    // assumed optimum tack angle
-     //-----------------------------------------------------------------------------------------
+    /**
+     * Class method to compute a theoretical MWD from the meanHeadingTarget and the
+     * assumed optimum tack angle
+     */
     public double MWD() {
         if (tack.equals("stbd")) {
             return (NavigationTools.fixAngle(meanHeadingTarget + TackGybe + CourseOffset));
@@ -948,79 +968,38 @@ public class start_raceActivity extends Activity {
         return (NavigationTools.fixAngle(meanHeadingTarget - TackGybe + CourseOffset));
     }
 
-    //-----------------------------------------------------------------------------------------
-    // Class method to detect if we tacked or gybed on current course
-    //-----------------------------------------------------------------------------------------
+    /**
+     * Class method to detect if we tacked or gybed on current course
+     */
     void checkForTackGybe() {
-        if ((Math.abs(NavigationTools.HeadingDelta(meanHeadingTarget, para.COG)) > 50.0) && (Math.abs(NavigationTools.HeadingDelta(meanWindDirection, para.COG)) < 80.0)) {
+        if ((Math.abs(NavigationTools.HeadingDelta(meanHeadingTarget, para.getCOG())) > 50.0) && (Math.abs(NavigationTools.HeadingDelta(meanWindDirection, para.getCOG())) < 80.0)) {
             // this should indicate that we tacked / gybed
-            readyToTackOrGybe();
+            //;
         }
     }
 
-    //-----------------------------------------------------------------------------------------
-    // Class method to detect if we're on Upwind or Downwind leg of race
-    //-----------------------------------------------------------------------------------------
+    /**
+     * Class method to detect if we're on Upwind or Downwind leg of race
+     */
     void checkForUpwindDownwindChange() {
-        if (Math.abs(NavigationTools.HeadingDelta(meanWindDirection, para.COG)) > 80.0) {
+        if (Math.abs(NavigationTools.HeadingDelta(meanWindDirection, para.getCOG())) > 80.0) {
             // this should indicate that we are now sailing Downwind
-            CourseOffset = (float) 0.0;
+            CourseOffset = 0.0d;
+            para.setCourseOffset(CourseOffset);
         } else {
             // this should indicate that we are now sailing Upwind
-            CourseOffset = (float) 180.0;
+            CourseOffset = 180.0d;
+            para.setCourseOffset(CourseOffset);
         }
-        if (Math.abs(NavigationTools.HeadingDelta(meanHeadingTarget, para.COG)) > 80.0) {
+        if (Math.abs(NavigationTools.HeadingDelta(meanHeadingTarget, para.getCOG())) > 80.0) {
             meanHeadingTarget = NavigationTools.fixAngle(meanHeadingTarget + 180.0);
         }
-        if (para.leewardRace || para.windwardRace) {
-            if (CourseOffset == 180.0) {
+        if (para.getLeewardRace() || para.getLeewardRace()) {
+            if (CourseOffset == 180.0d) {
                 goWindwardMark();
             } else {
                 goLeewardMark();
             }
         }
-    }
-
-    //-----------------------------------------------------------------------------------------
-    // Class method to execute a tack/gybe by updating all parameters
-    //-----------------------------------------------------------------------------------------
-    void readyToTackOrGybe() {
-        if ( tack.equals("stbd") ) {
-            tack = "port";
-            if (CourseOffset == 0.0) {
-                // Upwind leg
-                boat.setImageResource(R.drawable.boatred);
-            } else {
-                // Downwind leg
-                boat.setImageResource(R.drawable.boatred_reach);
-            }
-            /*
-            meanHeadingTarget = NavigationTools.fixAngle(meanHeadingTarget + 2.0 * TackGybe);
-            if (windex == 0) {
-                outputMeanHeadingTarget.setTextColor(RED);
-                outputMeanHeadingTarget.setText(dfThree.format(meanHeadingTarget));
-            }
-            */
-        } else {
-            tack = "stbd";
-            if (CourseOffset == 0.0) {
-                // Upwind leg
-                boat.setImageResource(R.drawable.boatgreen);
-            } else {
-                // Downwind leg
-                boat.setImageResource(R.drawable.boatgreen_reach);
-            }
-            /*
-            meanHeadingTarget = NavigationTools.fixAngle(meanHeadingTarget - 2.0 * TackGybe);
-            if (windex == 0) {
-                outputMeanHeadingTarget.setTextColor(GREEN);
-                outputMeanHeadingTarget.setText(dfThree.format(meanHeadingTarget));
-            }
-            */
-        }
-        timeCounter = 0.0;
-        sumVariances = 0.0;
-        gps.LocationList.clear();
-        updateMarkerButtons();
     }
 }
